@@ -11,6 +11,11 @@ mov ds, ax
 mov si, 0D
 mov di, 0D
 
+; clear screen
+mov ah, 0
+mov al, 3       ; 文本模式 80x25
+int 10h
+
 jmp loop_print
 
 string:
