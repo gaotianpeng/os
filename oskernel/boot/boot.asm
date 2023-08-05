@@ -1,39 +1,44 @@
-; print string
-xor ax, ax
+[ORG 0X7C00]
 
-mov ax, 0xb800
-mov es, ax
+[SECTION .text]
+[BITS 16]
+global _start
+_start:
+    ; 设置屏幕模式为文本模式，并清除屏幕
+    mov ax, 3
+    int 0x10
 
-mov cx, loop_print - string
-mov ax, 0x7c0
-mov ds, ax
+    xor ax, ax
+    mov ss, ax
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+    mov si, ax
 
-mov si, 0D
-mov di, 0D
+    mov si, msg     ; 传入字符串
+    call print
 
-; clear screen
-mov ah, 0
-mov al, 3       ; 文本模式 80x25
-int 10h
+    jmp $
 
-jmp loop_print
+print:
+    ; ah 代表欲调用的功能
+    mov ah, 0x0e    ; e显示字符，光标随字符移动(al字符，bl前景色)
+    mov bh, 0x0     ; 设置页号，现在不使用了
+    mov bl, 0x01    ; 设置前景色
+.loop
+    mov al, [si]
+    cmp al, 0
+    jz .done        ; 遇到0打印结束
+    int 0x10        ; 打印字符并移动光标
 
-string:
-    db 'Helo World!'
-
-; cx 存放循环次数,每次循环判断cx = cx - 1,如果cx==0 终止循环
-loop_print:
-    mov byte al,[string + si]
-    mov byte [es:di], al
-    inc di
-    mov byte [es:di], 7
-    inc di
     inc si
+    jmp .loop
+.done
+    ret
 
-    loop loop_print
-
-end:
-    jmp 0x7c0:end
+msg:
+    db "hello world!", 10, 13, 0
 
 times 510 - ($ - $$) db 0x00
-db 0x55, 0xaa
+db 0x55,0xaa
