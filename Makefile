@@ -13,6 +13,8 @@ ${BUILD}/boot/%.o: oskernel/boot/%.asm
 
 clean:
 	$(shell rm -rf ${BUILD})
+	$(shell rm -rf bx_enh_dbg.ini)
+	$(shell rm -rf hd.img)
 
 bochs: all
 	bochs -q -f bochsrc
