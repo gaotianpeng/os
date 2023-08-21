@@ -12,12 +12,11 @@ boot_start:
     int 0x10
 
     ; 将setup读入内存
-    mov edi, BOOT_MAIN_ADDR ; 读到哪里
-    mov ecx, 1      ; 从哪个扇区开始读
-    mov bl, 2       ; 读多少扇区
+    mov edi, BOOT_MAIN_ADDR         ; 读到哪里
+    mov ecx, 1                      ; 从哪个扇区开始读
+    mov bl, 2                       ; 读多少扇区
     call read_hd
 
-    ; 跳过去
     mov     si, jmp_to_setup
     call    print
 
@@ -48,8 +47,8 @@ read_hd:
     ; 0x1f6 8bit
     ; 0-3 位iba地址的24-27
     ; 4 0表示主盘 1表示从盘
-    ; 5、7位固定为1
-    ; 6 0表示CHS模式，1表示LAB模式
+    ; 5, 7位固定为1
+    ; 6 0表示CHS模式，1表示LBA模式
     inc dx
     shr ecx, 8
     and cl, 0b1111
