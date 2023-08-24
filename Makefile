@@ -25,8 +25,22 @@ ${BUILD}/system.bin: ${BUILD}/kernel.bin
 	objcopy -O binary ${BUILD}/kernel.bin ${BUILD}/system.bin
 	nm ${BUILD}/kernel.bin | sort > ${BUILD}/system.map
 
-${BUILD}/kernel.bin: ${BUILD}/boot/head.o ${BUILD}/init/main.o
+
+${BUILD}/kernel.bin: ${BUILD}/boot/head.o ${BUILD}/init/main.o ${BUILD}/kernel/asm/io.o ${BUILD}/kernel/chr_drv/console.o \
+    ${BUILD}/lib/string.o ${BUILD}/kernel/vsprintf.o ${BUILD}/kernel/printk.o ${BUILD}/kernel/gdt.o
 	ld -m elf_i386 $^ -o $@ -Ttext 0x1200
+
+${BUILD}/kernel/%.o: oskernel/kernel/%.c
+	$(shell mkdir -p ${BUILD}/kernel)
+	gcc ${CFLAGS} ${DEBUG} -c $< -o $@
+
+${BUILD}/lib/%.o: oskernel/lib/%.c
+	$(shell mkdir -p ${BUILD}/lib)
+	gcc ${CFLAGS} ${DEBUG} -c $< -o $@
+
+${BUILD}/kernel/chr_drv/%.o: oskernel/kernel/chr_drv/%.c
+	$(shell mkdir -p ${BUILD}/kernel/chr_drv)
+	gcc ${CFLAGS} ${DEBUG} -c $< -o $@
 
 ${BUILD}/init/main.o: oskernel/init/main.c
 	$(shell mkdir -p ${BUILD}/init)
@@ -38,6 +52,13 @@ ${BUILD}/boot/head.o: oskernel/boot/head.asm
 ${BUILD}/boot/%.o: oskernel/boot/%.asm
 	$(shell mkdir -p ${BUILD}/boot)
 	nasm $< -o $@
+
+${BUILD}/kernel/asm/%.o: oskernel/kernel/asm/%.asm
+	$(shell mkdir -p ${BUILD}/kernel/asm)
+	nasm -f elf32 -g $< -o $@
+
+
+
 
 clean:
 	$(shell rm -rf ${BUILD})

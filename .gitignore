@@ -3,3 +3,4 @@ cmake-build-debug
 build
 a.img
 hd.img
+bx_enh_dbg.ini

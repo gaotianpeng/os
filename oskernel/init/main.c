@@ -1,10 +1,11 @@
-//
-// Created by ziya on 22-6-23.
-//
+#include "../include/linux/tty.h"
+#include "../include/linux/kernel.h"
+#include "../include/linux/traps.h"
 
 void kernel_main(void) {
-    int a = 0;
+    console_init();
+    gdt_init();
 
-    char* video = (char*)0xb8000;
-    *video = 'G';
+    printk("os coll\n");
+    while (true);
 }
