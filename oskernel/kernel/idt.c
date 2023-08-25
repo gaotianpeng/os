@@ -6,7 +6,7 @@
 
 interrupt_gate_t interrupt_table[INTERRUPT_TABLE_SIZE] = {0};
 
-char idt_ptr[6] = {0};
+xdt_ptr_t idt_ptr;
 
 extern void interrupt_handler();
 extern void keymap_handler_entry();

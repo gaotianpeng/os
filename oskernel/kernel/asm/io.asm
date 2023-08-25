@@ -4,7 +4,7 @@
 global in_byte
 in_byte:
     push ebp;
-    mov ebx, esp
+    mov ebp, esp
 
     xor eax, eax
     ; port
@@ -18,7 +18,7 @@ in_byte:
 global out_byte
 out_byte:
     push ebp
-    mov ebx, esp
+    mov ebp, esp
 
     ; port
     mov edx, [ebp + 8]
