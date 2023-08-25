@@ -12,6 +12,7 @@ extern void interrupt_handler();
 extern void keymap_handler_entry();
 
 void idt_init() {
+    printk("init idt...\n");
     for (int i = 0; i < INTERRUPT_TABLE_SIZE; ++i) {
         interrupt_gate_t* p = &interrupt_table[i];
 
