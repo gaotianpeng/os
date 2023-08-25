@@ -10,6 +10,7 @@ xdt_ptr_t idt_ptr;
 
 extern void interrupt_handler();
 extern void keymap_handler_entry();
+extern void clock_handler_entry();
 
 // 在汇编中定义
 extern int interrupt_handler_table[0x2f];
@@ -23,6 +24,10 @@ void idt_init() {
 
         if (i <= 0x15) {
             handler = (int)interrupt_handler_table[i];
+        }
+
+        if (0x20 == i) {
+            handler = (int)clock_handler_entry;
         }
 
         if (0x21 == i) {
