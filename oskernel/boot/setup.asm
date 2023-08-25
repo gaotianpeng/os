@@ -12,7 +12,6 @@ B8000_SEG_LIMIT equ 0x7fff
 
 CODE_SELECTOR equ (1 << 3)
 DATA_SELECTOR equ (2 << 3)
-B8000_SELECTOR equ (3 << 3)
 
 gdt_base:
     dd 0, 0
