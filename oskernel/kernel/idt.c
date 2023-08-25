@@ -11,12 +11,19 @@ xdt_ptr_t idt_ptr;
 extern void interrupt_handler();
 extern void keymap_handler_entry();
 
+// 在汇编中定义
+extern int interrupt_handler_table[0x2f];
+
 void idt_init() {
     printk("init idt...\n");
     for (int i = 0; i < INTERRUPT_TABLE_SIZE; ++i) {
         interrupt_gate_t* p = &interrupt_table[i];
 
         int handler = interrupt_handler;
+
+        if (i <= 0x15) {
+            handler = (int)interrupt_handler_table[i];
+        }
 
         if (0x21 == i) {
             handler = keymap_handler_entry;
