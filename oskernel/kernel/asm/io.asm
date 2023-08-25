@@ -31,8 +31,8 @@ out_byte:
 
 global in_word
 in_word:
-    push ebx
-    mov ebx, esp
+    push ebp
+    mov ebp, esp
 
     xor eax, eax
 
@@ -52,7 +52,7 @@ out_word:
     mov edx, [ebp + 8]
     ; value
     mov eax, [ebp + 12]
-    out dx, eax
+    out dx, ax
 
     leave
     ret

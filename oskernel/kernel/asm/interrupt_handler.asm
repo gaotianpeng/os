@@ -5,8 +5,8 @@ extern printk
 extern keymap_handler
 extern exception_handler
 
-global interrupt_handler
-interrupt_handler:
+global interrupt_handler_entry
+interrupt_handler_entry:
     push msg
     call printk
     add esp, 4
