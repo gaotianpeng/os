@@ -1,8 +1,12 @@
+//
+// Created by ziya on 22-6-27.clock_handler_entry
+//
+
 #include "../include/asm/system.h"
 #include "../include/linux/head.h"
 #include "../include/linux/traps.h"
 
-#define INTERRUPT_TABLE_SIZE 256
+#define INTERRUPT_TABLE_SIZE    256
 
 interrupt_gate_t interrupt_table[INTERRUPT_TABLE_SIZE] = {0};
 
@@ -12,15 +16,16 @@ extern void interrupt_handler_entry();
 extern void keymap_handler_entry();
 extern void clock_handler_entry();
 
-// 在汇编中定义
+// 是在汇编中定义的
 extern int interrupt_handler_table[0x2f];
 
 void idt_init() {
     printk("init idt...\n");
+
     for (int i = 0; i < INTERRUPT_TABLE_SIZE; ++i) {
         interrupt_gate_t* p = &interrupt_table[i];
 
-        int handler = interrupt_handler_entry;
+        int handler = (int)interrupt_handler_entry;
 
         if (i <= 0x15) {
             handler = (int)interrupt_handler_table[i];
@@ -31,7 +36,7 @@ void idt_init() {
         }
 
         if (0x21 == i) {
-            handler = keymap_handler_entry;
+            handler = (int)keymap_handler_entry;
         }
 
         p->offset0 = handler & 0xffff;
@@ -45,14 +50,7 @@ void idt_init() {
     }
 
     // 让CPU知道中断向量表
-    // 让CPU知道中断向量表
     write_xdt_ptr(&idt_ptr, INTERRUPT_TABLE_SIZE * 8, interrupt_table);
-
-
-    BOCHS_DEBUG_MAGIC
-    BOCHS_DEBUG_MAGIC
 
     asm volatile("lidt idt_ptr;");
 }
-
-

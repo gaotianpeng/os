@@ -1,5 +1,5 @@
 [bits 32]
-[section .text]
+[SECTION .text]
 
 global in_byte
 in_byte:
@@ -7,23 +7,20 @@ in_byte:
     mov ebp, esp
 
     xor eax, eax
-    ; port
-    mov edx, [ebp + 8]
+
+    mov edx, [ebp + 8]      ; port
     in al, dx
 
-    ; 函数结束前的清理工作
-    leave            ; 等价于 mov esp, ebp  和  pop ebp
-    ret              ; 返回调用者
+    leave
+    ret
 
 global out_byte
 out_byte:
-    push ebp
+    push ebp;
     mov ebp, esp
 
-    ; port
-    mov edx, [ebp + 8]
-    ; value
-    mov eax, [ebp + 12]
+    mov edx, [ebp + 8]      ; port
+    mov eax, [ebp + 12]     ; value
     out dx, al
 
     leave
@@ -31,13 +28,12 @@ out_byte:
 
 global in_word
 in_word:
-    push ebp
+    push ebp;
     mov ebp, esp
 
     xor eax, eax
 
-    ; port
-    mov edx, [ebp + 8];
+    mov edx, [ebp + 8]      ; port
     in ax, dx
 
     leave
@@ -45,21 +41,12 @@ in_word:
 
 global out_word
 out_word:
-    push ebp
+    push ebp;
     mov ebp, esp
 
-    ; port
-    mov edx, [ebp + 8]
-    ; value
-    mov eax, [ebp + 12]
+    mov edx, [ebp + 8]      ; port
+    mov eax, [ebp + 12]     ; value
     out dx, ax
 
     leave
     ret
-
-
-
-
-
-
-
