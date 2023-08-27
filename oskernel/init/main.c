@@ -2,14 +2,16 @@
 #include "../include/linux/kernel.h"
 #include "../include/linux/traps.h"
 
+extern void clock_init();
+
 void kernel_main(void) {
     console_init();
     gdt_init();
     idt_init();
+    clock_init();
 
     printk("os coll\n");
 
     __asm__("sti;");
-//    int i = 10 / 0;
     while (true);
 }
