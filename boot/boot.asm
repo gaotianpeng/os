@@ -5,6 +5,9 @@ section mbr vstart=0x7c00
     mov ss, ax
     mov fs, ax
     mov sp, 0x7c00
+    mov ax, 0xb800
+    mov gs, ax
+
 
 ; 清屏，利用0x06号功能，上卷全部行来清屏
 ; int 0x10  功能号:0x06, 功能描述：上卷窗口
@@ -41,8 +44,23 @@ section mbr vstart=0x7c00
     mov bl, 0x02        ; bl中是字符属性, 属性黑底绿字(bl = 02h)
     int 0x10
 
-    jmp $
+; 输出背景色绿色，前景色红色，并且跳动的字符串"1 MBR"
+    mov byte [gs:0x00], '1'
+    mov byte [gs:0x01], 0xA4    ; A表示绿色背景闪烁，4表示前景色为红色
 
+    mov byte [gs:0x02], ' '
+    mov byte [gs:0x03], 0xA4
+
+    mov byte [gs:0x04], 'M'
+    mov byte [gs:0x05], 0xA4
+
+    mov byte [gs:0x06], 'B'
+    mov byte [gs:0x07], 0xA4
+
+    mov byte [gs:0x08], 'R'
+    mov byte [gs:0x09], 0xA4
+
+    jmp $
 
 message db '1 MBR'
 
