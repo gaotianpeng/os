@@ -6,7 +6,7 @@ all: ${BUILD}/boot/mbr.o ${BUILD}/boot/loader.o
 	$(shell rm -rf $(HD_IMG_NAME))
 	bximage -q -hd=16 -func=create -sectsize=512 -imgmode=flat $(HD_IMG_NAME)
 	dd if=${BUILD}/boot/mbr.o of=hd.img bs=512 seek=0 count=1 conv=notrunc
-	dd if=${BUILD}/boot/loader.o of=hd.img bs=512 seek=2 count=1 conv=notrunc
+	dd if=${BUILD}/boot/loader.o of=hd.img bs=512 seek=2 count=4 conv=notrunc
 
 ${BUILD}/boot/%.o: boot/%.asm
 	$(shell mkdir -p ${BUILD}/boot)
@@ -15,6 +15,7 @@ ${BUILD}/boot/%.o: boot/%.asm
 clean:
 	$(shell rm -rf ${BUILD})
 	$(shell rm -rf bx_enh_dbg.ini)
+	$(shell rm -rf hd.img)
 
 
 bochs: all

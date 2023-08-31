@@ -19,10 +19,8 @@ section mbr vstart=0x7c00
 ; (CL,CH) = 窗口左上角的(X,Y)位置
 ; (DL,DH) = 窗口右下角的(X,Y)位置
 ; 无返回值
-    xor ax, ax
-    mov ah, 0x06
-    xor bx, bx
-    mov bh, 0x07
+    mov ax, 0600h
+    mov bx, 0700h
     mov cx, 0            ; 左上角: (0, 0)
     mov dx, 0x184f       ; 右下角: (80,25),
     
@@ -46,7 +44,7 @@ section mbr vstart=0x7c00
 
     mov eax, LOADER_START_SECTOR    ; 起始扇区lba地址
     mov bx, LOADER_BASE_ADDR        ; 写入的地址
-    mov cx, 1                       ; 待读入的扇区数
+    mov cx, 4                       ; 待读入的扇区数
     call rd_disk_m
 
     jmp LOADER_BASE_ADDR
