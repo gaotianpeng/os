@@ -48,7 +48,7 @@
       mov ecx, 20                   ; ADRS 地址范围描述符结构大小是20字节
       int 0x15
       jc .e820_failed_so_try_e801   ; 若cf位为1则有错误发生，尝试把0xe801子功能、
-      and di, cx                    ; 使di增加20字节指向缓冲区中新的ADRS结构位置
+      add di, cx                    ; 使di增加20字节指向缓冲区中新的ADRS结构位置
       inc word [ards_nr]            ; 记录ADRS数量
       cmp ebx, 0                    ; 若ebx为0，且cf不为1，这说明adrs全部返回，当前已经是最后一个
       jnz .e820_mem_get_loop
