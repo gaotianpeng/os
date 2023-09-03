@@ -25,10 +25,12 @@ ${BUILD}/boot/%.o: boot/%.asm
 	$(shell mkdir -p ${BUILD}/boot)
 	nasm -I boot/ $< -o $@
 
+${BUILD}/print.o: lib/kernel/*.asm
+	$(shell mkdir -p ${BUILD})
+	nasm -f elf $< -o $@
 
-${BUILD}/kernel.bin:  ${BUILD}/kernel/main.o
+${BUILD}/kernel.bin:  ${BUILD}/kernel/main.o ${BUILD}/print.o
 	ld -m elf_i386 $^ -o $@ -Ttext 0xc0001500 -e main
-	# ld out/kernel/main.o -Ttext 0xc0001500 -e main -o out/kernel/kernel.bin 
 
 clean:
 	$(shell rm -rf ${BUILD})

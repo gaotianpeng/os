@@ -1,6 +1,5 @@
    %include "boot.inc"
    section loader vstart=LOADER_BASE_ADDR
-   LOADER_STACK_TOP  equ LOADER_BASE_ADDR
 
 ; 构建GDT及其内部的描述符
    GDT_BASE:         dd    0x00000000
@@ -181,34 +180,8 @@ p_mode_start:
 
    ; 在开启分页后,用gdt新的地址重新加载
    lgdt [gdt_ptr]
-
-   mov byte [gs:160], 'V'     
-   mov byte [gs:162], 'i'     
-   mov byte [gs:164], 'r'     
-   mov byte [gs:166], 't'     
-   mov byte [gs:168], 'u'     
-   mov byte [gs:170], 'a'   
-   mov byte [gs:172], 'l' 
-
    jmp SELECTOR_CODE:enter_kernel
 enter_kernel:
-   mov byte [gs:320], 'k'
-   mov byte [gs:322], 'e'
-   mov byte [gs:324], 'r'
-   mov byte [gs:326], 'n'
-   mov byte [gs:328], 'e'
-   mov byte [gs:330], 'l'
-
-   mov byte [gs:480], 'w'
-   mov byte [gs:482], 'h'
-   mov byte [gs:484], 'i'
-   mov byte [gs:486], 'l'
-   mov byte [gs:488], 'e'
-   mov byte [gs:490], '('
-   mov byte [gs:492], '1'
-   mov byte [gs:494], ')'
-   mov byte [gs:496], ';'
-
    call kernel_init
    mov esp, 0xc009f000
    jmp KERNEL_ENTRY_POINT
@@ -255,8 +228,6 @@ mem_cpy:
    pop ecx
    pop ebx
    ret
-
-
 
 
 ; ------------- 创建页目录及页表
