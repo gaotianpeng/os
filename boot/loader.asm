@@ -226,7 +226,7 @@ mem_cpy:
    rep movsb               ; 逐字节拷贝
 
    pop ecx
-   pop ebx
+   pop ebp
    ret
 
 
