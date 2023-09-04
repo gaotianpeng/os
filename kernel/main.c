@@ -1,4 +1,4 @@
-#include "../lib/kernel/print.h"
+#include "kernel/print.h"
 
 void main(void) {
    put_str("I am kernel\n");

@@ -39,11 +39,7 @@ clean:
 
 ${BUILD}/kernel/%.o: kernel/%.c
 	$(shell mkdir -p ${BUILD}/kernel)
-	gcc ${CFLAGS} ${DEBUG} -c $< -o $@
-
+	gcc -I lib/ ${CFLAGS} ${DEBUG} -c $< -o $@
 
 bochs: all
 	bochs -q -f bochsrc
-
-qemu: all
-	qemu-system-x86_64 -hda hd.img
