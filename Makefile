@@ -1,60 +1,77 @@
-BUILD:=./build
+BUILD_DIR = ./build
 
-CFLAGS:= -m32 # 32 位的程序
-CFLAGS+= -masm=intel
-CFLAGS+= -fno-builtin	# 不需要 gcc 内置函数
-CFLAGS+= -fno-stack-protector	# 不需要栈保护
-CFLAGS:=$(strip ${CFLAGS})
+DISK_IMG = hd.img
+ENTRY_POINT = 0xc0001500
 
-DEBUG:= -g
+AS = nasm
+CC = gcc
+LD = ld
+LIB = -I lib/ -I lib/kernel/ -I lib/user/ -I kernel/ -I device/
 
-HD_IMG_NAME:= "hd.img"
+ASFLAGS = -f elf 
+ASBINLIB = -I boot/include
+CFLAGS = -m32 -Wall $(LIB) -c -fno-builtin -W -Wstrict-prototypes \
+         -Wmissing-prototypes -fno-stack-protector
+LDFLAGS = -melf_i386 -Ttext $(ENTRY_POINT) -e main -Map $(BUILD_DIR)/kernel.map
+OBJS = $(BUILD_DIR)/main.o $(BUILD_DIR)/init.o $(BUILD_DIR)/interrupt.o \
+      $(BUILD_DIR)/timer.o $(BUILD_DIR)/kernel.o $(BUILD_DIR)/print.o \
+      $(BUILD_DIR)/debug.o
 
-all: ${BUILD}/boot/mbr.o ${BUILD}/boot/loader.o ${BUILD}/kernel.bin
-	$(shell rm -rf $(HD_IMG_NAME))
-	bximage -q -hd=16 -func=create -sectsize=512 -imgmode=flat $(HD_IMG_NAME)
-	dd if=${BUILD}/boot/mbr.o of=hd.img bs=512 seek=0 count=1 conv=notrunc
-	dd if=${BUILD}/boot/loader.o of=hd.img bs=512 seek=2 count=4 conv=notrunc
-	dd if=${BUILD}/kernel.bin of=hd.img bs=512 seek=9 count=200 conv=notrunc
+$(BUILD_DIR)/mbr.bin: boot/mbr.asm
+	$(AS) $(ASBINLIB) $< -o $@
 
-${BUILD}/boot/%.o: boot/%.asm
-	$(shell mkdir -p ${BUILD}/boot)
-	nasm -I boot/ $< -o $@
+$(BUILD_DIR)/loader.bin: boot/loader.asm
+	$(AS) $(ASBINLIB) $< -o $@
 
-${BUILD}/lib/print.o: lib/kernel/print.asm
-	$(shell mkdir -p ${BUILD}/lib)
-	nasm -f elf32 $< -o $@
+$(BUILD_DIR)/main.o: kernel/main.c lib/kernel/print.h \
+        lib/stdint.h kernel/init.h
+	$(CC) $(CFLAGS) $< -o $@
 
-${BUILD}/kernel/kernel.o: kernel/kernel.asm
-	$(shell mkdir -p ${BUILD}/kernel)
-	nasm -f elf32 $< -o $@
+$(BUILD_DIR)/init.o: kernel/init.c kernel/init.h lib/kernel/print.h \
+        lib/stdint.h kernel/interrupt.h device/timer.h
+	$(CC) $(CFLAGS) $< -o $@
 
-${BUILD}/kernel.bin: ${BUILD}/kernel/main.o ${BUILD}/lib/print.o ${BUILD}/kernel/kernel.o \
-	${BUILD}/kernel/init.o ${BUILD}/kernel/interrupt.o ${BUILD}/device/timer.o
-	ld -m elf_i386 $^ -o $@ -Ttext 0xc0001500 -e main
+$(BUILD_DIR)/interrupt.o: kernel/interrupt.c kernel/interrupt.h \
+        lib/stdint.h kernel/global.h lib/kernel/io.h lib/kernel/print.h
+	$(CC) $(CFLAGS) $< -o $@
 
-${BUILD}/kernel/init.o: kernel/init.c
-	$(shell mkdir -p ${BUILD}/kernel)
-	gcc -m32 -I lib/ -fno-builtin  -fno-stack-protector  -c $< -o $@
+$(BUILD_DIR)/timer.o: device/timer.c device/timer.h lib/stdint.h\
+         lib/kernel/io.h lib/kernel/print.h
+	$(CC) $(CFLAGS) $< -o $@
 
-${BUILD}/kernel/main.o: kernel/main.c
-	$(shell mkdir -p ${BUILD}/kernel)
-	gcc -m32 -I lib/ -fno-builtin  -fno-stack-protector  -c $< -o $@
+$(BUILD_DIR)/debug.o: kernel/debug.c kernel/debug.h \
+        lib/kernel/print.h lib/stdint.h kernel/interrupt.h
+	$(CC) $(CFLAGS) $< -o $@
 
-${BUILD}/kernel/interrupt.o: kernel/interrupt.c
-	$(shell mkdir -p ${BUILD}/kernel)
-	gcc -m32 -I lib/ -fno-builtin  -fno-stack-protector  -c $< -o $@
+$(BUILD_DIR)/kernel.o: kernel/kernel.asm
+	$(AS) $(ASFLAGS) $< -o $@
+$(BUILD_DIR)/print.o: lib/kernel/print.asm
+	$(AS) $(ASFLAGS) $< -o $@
 
-${BUILD}/device/timer.o: device/timer.c
-	$(shell mkdir -p ${BUILD}/device)
-	gcc -m32 -I lib/ -fno-builtin  -fno-stack-protector  -c $< -o $@
+$(BUILD_DIR)/kernel.bin: $(OBJS)
+	$(LD) $(LDFLAGS) $^ -o $@
 
+.PHONY : mk_dir hd clean all
+
+mk_dir:
+	if [ ! -d $(BUILD_DIR) ];then mkdir $(BUILD_DIR);fi
+
+mk_img:
+	if [ ! -e $(DISK_IMG) ];then bximage -q -hd=16 -func=create -sectsize=512 -imgmode=flat $(DISK_IMG);fi
+
+hd:
+	dd if=$(BUILD_DIR)/mbr.bin of=hd.img bs=512 count=1  conv=notrunc
+	dd if=$(BUILD_DIR)/loader.bin of=hd.img bs=512 count=4 seek=2 conv=notrunc
+	dd if=$(BUILD_DIR)/kernel.bin \
+           of=hd.img \
+           bs=512 count=200 seek=9 conv=notrunc
 
 clean:
-	$(shell rm -rf ${BUILD})
-	$(shell rm -rf bx_enh_dbg.ini)
-	$(shell rm -rf hd.img)
+	cd $(BUILD_DIR) && rm -f ./* && rm ../$(DISK_IMG)
 
+build: $(BUILD_DIR)/kernel.bin $(BUILD_DIR)/mbr.bin $(BUILD_DIR)/loader.bin
+
+all: mk_dir mk_img build hd
 
 bochs: all
 	bochs -q -f bochsrc

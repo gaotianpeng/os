@@ -1,9 +1,12 @@
-#include "kernel/print.h"
+#include "print.h"
 #include "init.h"
+#include "debug.h"
 
-void main(void) {
+int main(void) {
    put_str("I am kernel\n");
    init_all();
-   asm volatile("sti");
+   ASSERT(1==2);
    while (1);
+
+   return 0;
 }
