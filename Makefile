@@ -3,10 +3,6 @@ BUILD:=./build
 CFLAGS:= -m32 # 32 位的程序
 CFLAGS+= -masm=intel
 CFLAGS+= -fno-builtin	# 不需要 gcc 内置函数
-CFLAGS+= -nostdinc		# 不需要标准头文件
-CFLAGS+= -fno-pic		# 不需要位置无关的代码  position independent code
-CFLAGS+= -fno-pie		# 不需要位置无关的可执行程序 position independent executable
-CFLAGS+= -nostdlib		# 不需要标准库
 CFLAGS+= -fno-stack-protector	# 不需要栈保护
 CFLAGS:=$(strip ${CFLAGS})
 
@@ -25,21 +21,36 @@ ${BUILD}/boot/%.o: boot/%.asm
 	$(shell mkdir -p ${BUILD}/boot)
 	nasm -I boot/ $< -o $@
 
-${BUILD}/print.o: lib/kernel/*.asm
-	$(shell mkdir -p ${BUILD})
-	nasm -f elf $< -o $@
+${BUILD}/lib/print.o: lib/kernel/print.asm
+	$(shell mkdir -p ${BUILD}/lib)
+	nasm -f elf32 $< -o $@
 
-${BUILD}/kernel.bin:  ${BUILD}/kernel/main.o ${BUILD}/print.o
+${BUILD}/kernel/kernel.o: kernel/kernel.asm
+	$(shell mkdir -p ${BUILD}/kernel)
+	nasm -f elf32 $< -o $@
+
+${BUILD}/kernel.bin: ${BUILD}/kernel/main.o ${BUILD}/lib/print.o ${BUILD}/kernel/kernel.o \
+	${BUILD}/kernel/init.o ${BUILD}/kernel/interrupt.o
 	ld -m elf_i386 $^ -o $@ -Ttext 0xc0001500 -e main
+
+${BUILD}/kernel/init.o: kernel/init.c
+	$(shell mkdir -p ${BUILD}/kernel)
+	gcc -m32 -I lib/ -fno-builtin  -fno-stack-protector  -c $< -o $@
+
+${BUILD}/kernel/main.o: kernel/main.c
+	$(shell mkdir -p ${BUILD}/kernel)
+	gcc -m32 -I lib/ -fno-builtin  -fno-stack-protector  -c $< -o $@
+
+${BUILD}/kernel/interrupt.o: kernel/interrupt.c
+	$(shell mkdir -p ${BUILD}/kernel)
+	gcc -m32 -I lib/ -fno-builtin  -fno-stack-protector  -c $< -o $@
+
 
 clean:
 	$(shell rm -rf ${BUILD})
 	$(shell rm -rf bx_enh_dbg.ini)
 	$(shell rm -rf hd.img)
 
-${BUILD}/kernel/%.o: kernel/%.c
-	$(shell mkdir -p ${BUILD}/kernel)
-	gcc -I lib/ ${CFLAGS} ${DEBUG} -c $< -o $@
 
 bochs: all
 	bochs -q -f bochsrc

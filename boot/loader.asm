@@ -250,17 +250,17 @@ setup_page:
 ; 一个页表可以表示4MB内存，这样0xc03fffff以下的地址和0x003fffff以下的地址都指向相同的页表
 ; 这是为将地址映射为内核地址做准备
       or eax, PG_US_U | PG_RW_W | PG_P       ; 页目录项的属性RW和P位为1，US为1，表示用户属性，所有特权级别都可以访问
-      mov [PAGE_DIR_TABLE_POS + 0x0], eax     ; 第1个目录项，在页目录表中的第一个目录项写入第一个页表的位置(0x101000)及属性(7)
-      mov [PAGE_DIR_TABLE_POS + 0xc00], eax   ; 第1个页表项占4字节，0xc00表示第768个页表占用的目录项，0xc00以上的目录项用于内核空间
-                                             ; 也就是页表的0xc0000000 ~ 0xffffffff 共计1G属于内核，0x0~0xbfffffff共计3G属于用户进程
+      mov [PAGE_DIR_TABLE_POS + 0x0], eax    ; 第1个目录项，在页目录表中的第一个目录项写入第一个页表的位置(0x101000)及属性(7)
+      mov [PAGE_DIR_TABLE_POS + 0xc00], eax  ; 第1个页表项占4字节，0xc00表示第768个页表占用的目录项，0xc00以上的目录项用于内核空间
+                                             ; 0xc0000000 ~ 0xffffffff 共计1G属于内核，0x0~0xbfffffff共计3G属于用户进程
       sub eax, 0x1000
-      mov [PAGE_DIR_TABLE_POS + 4092], eax    ; 使最后一个目录项指向页目录表自己的地址
+      mov [PAGE_DIR_TABLE_POS + 4092], eax   ; 使最后一个目录项指向页目录表自己的地址
 
-; 创建页表项(PTE)
+; 创建第1个页表的页表项(PTE)
       mov ecx, 256                           ; 1M低端内存/每页大小4K = 256
       mov esi, 0
       mov edx, PG_US_U | PG_RW_W | PG_P      ; 属性为7，US=1, RW=1, P=1
-   .create_pte:                              ; 创建Page Table Entry
+   .create_pte:                              ; 创建 Page Table Entry
       mov [ebx + esi*4], edx                 ; 此时的ebx已经在上面赋值为0x101000, 也就是第一个页表地址
       add edx, 4096
       inc esi
