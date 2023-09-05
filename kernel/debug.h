@@ -1,5 +1,6 @@
 #ifndef __KERNEL_DEBUG_H
 #define __KERNEL_DEBUG_H
+
 void panic_spin(char* filename, int line, const char* func, const char* condition);
 
 /***************************  __VA_ARGS__  *******************************
@@ -14,9 +15,8 @@ void panic_spin(char* filename, int line, const char* func, const char* conditio
 #else
    #define ASSERT(CONDITION)                                      \
       if (CONDITION) {} else {                                    \
-  /* 符号#让编译器将宏的参数转化为字符串字面量 */		  \
-	 PANIC(#CONDITION);                                       \
+         PANIC(#CONDITION);                                       \
       }
-#endif /*__NDEBUG */
+#endif // __NDEBUG
 
-#endif /*__KERNEL_DEBUG_H*/
+#endif // __KERNEL_DEBUG_H
