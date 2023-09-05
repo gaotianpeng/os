@@ -30,7 +30,7 @@ ${BUILD}/kernel/kernel.o: kernel/kernel.asm
 	nasm -f elf32 $< -o $@
 
 ${BUILD}/kernel.bin: ${BUILD}/kernel/main.o ${BUILD}/lib/print.o ${BUILD}/kernel/kernel.o \
-	${BUILD}/kernel/init.o ${BUILD}/kernel/interrupt.o
+	${BUILD}/kernel/init.o ${BUILD}/kernel/interrupt.o ${BUILD}/device/timer.o
 	ld -m elf_i386 $^ -o $@ -Ttext 0xc0001500 -e main
 
 ${BUILD}/kernel/init.o: kernel/init.c
@@ -43,6 +43,10 @@ ${BUILD}/kernel/main.o: kernel/main.c
 
 ${BUILD}/kernel/interrupt.o: kernel/interrupt.c
 	$(shell mkdir -p ${BUILD}/kernel)
+	gcc -m32 -I lib/ -fno-builtin  -fno-stack-protector  -c $< -o $@
+
+${BUILD}/device/timer.o: device/timer.c
+	$(shell mkdir -p ${BUILD}/device)
 	gcc -m32 -I lib/ -fno-builtin  -fno-stack-protector  -c $< -o $@
 
 
