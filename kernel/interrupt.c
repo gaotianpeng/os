@@ -25,24 +25,23 @@ static struct gate_desc idt[IDT_DESC_CNT];   // idt是中断描述符表，本�
 
 extern intr_handler intr_entry_table[IDT_DESC_CNT];	    // 声明引用定义在kernel.S中的中断处理函数入口数组
 
-/* 初始化可编程中断控制器8259A */
+// 初始化可编程中断控制器8259A (pic/programmable interrupt controller)
 static void pic_init(void) {
-
-    /* 初始化主片 */
-    outb (PIC_M_CTRL, 0x11);   // ICW1: 边沿触发,级联8259, 需要ICW4.
-    outb (PIC_M_DATA, 0x20);   // ICW2: 起始中断向量号为0x20,也就是IR[0-7] 为 0x20 ~ 0x27.
+    // 初始化主片
+    outb (PIC_M_CTRL, 0x11);   // ICW1: 边沿触发，级联8259，需要ICW4.
+    outb (PIC_M_DATA, 0x20);   // ICW2: 起始中断向量号为0x20，也就是IR[0-7] 为 0x20 ~ 0x27.
     outb (PIC_M_DATA, 0x04);   // ICW3: IR2接从片. 
     outb (PIC_M_DATA, 0x01);   // ICW4: 8086模式, 正常EOI
 
-    /* 初始化从片 */
+    // 初始化从片
     outb (PIC_S_CTRL, 0x11);	// ICW1: 边沿触发,级联8259, 需要ICW4.
-    outb (PIC_S_DATA, 0x28);	// ICW2: 起始中断向量号为0x28,也就是IR[8-15] 为 0x28 ~ 0x2F.
+    outb (PIC_S_DATA, 0x28);	// ICW2: 起始中断向量号为0x28，也就是IR[8-15] 为 0x28 ~ 0x2F.
     outb (PIC_S_DATA, 0x02);	// ICW3: 设置从片连接到主片的IR2引脚
     outb (PIC_S_DATA, 0x01);	// ICW4: 8086模式, 正常EOI
 
-    /* 打开主片上IR0,也就是目前只接受时钟产生的中断 */
-    outb (PIC_M_DATA, 0xfe);
-    outb (PIC_S_DATA, 0xff);
+    // 打开主片上IR0，目前只接受时钟产生的中断
+    outb (PIC_M_DATA, 0xfe);    // 不屏蔽IR0的时钟中断。其他位都是1，表示都屏蔽
+    outb (PIC_S_DATA, 0xff);    // 从片上的所有外设都屏蔽
 
     put_str("   pic_init done\n");
 }
@@ -76,5 +75,4 @@ void idt_init() {
     asm volatile("lidt %0" : : "m" (idt_operand));
 
     put_str("idt_init done\n");
-
 }
