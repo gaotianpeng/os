@@ -74,12 +74,12 @@ $(BUILD_DIR)/kernel.bin: $(OBJS)
 .PHONY : mk_dir hd clean all
 
 mk_dir:
-	if [ ! -d $(BUILD_DIR) ];then mkdir $(BUILD_DIR);fi
-
-mk_img:
-	if [ ! -e $(DISK_IMG) ];then bximage -q -hd=16 -func=create -sectsize=512 -imgmode=flat $(DISK_IMG);fi
+	$(shell rm -rf ${BUILD_DIR})
+	$(shell mkdir $(BUILD_DIR))
 
 hd:
+	$(shell rm -rf $(DISK_IMG))
+	bximage -q -hd=16 -func=create -sectsize=512 -imgmode=flat $(DISK_IMG)
 	dd if=$(BUILD_DIR)/mbr.bin of=hd.img bs=512 count=1  conv=notrunc
 	dd if=$(BUILD_DIR)/loader.bin of=hd.img bs=512 count=4 seek=2 conv=notrunc
 	dd if=$(BUILD_DIR)/kernel.bin \
@@ -94,7 +94,7 @@ clean:
 
 build: $(BUILD_DIR)/kernel.bin $(BUILD_DIR)/mbr.bin $(BUILD_DIR)/loader.bin
 
-all: mk_dir mk_img build hd
+all: mk_dir build hd
 
 bochs: all
 	bochs -q -f bochsrc
