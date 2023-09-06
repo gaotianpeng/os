@@ -1,19 +1,19 @@
 #include "print.h"
 #include "init.h"
-#include "debug.h"
-#include "string.h"
+#include "memory.h"
 
 int main(void) {
-   char* str = "hello world\n";
-   put_str(str);
-   int len = strlen(str);
-   put_int(len);
-   put_char('\n');
-
    put_str("I am kernel\n");
-
    init_all();
-   ASSERT(1==2);
+   void* addr = get_kernel_pages(3);
+   put_str("\n get_kernel_page start vaddr is ");
+   put_int((uint32_t)addr);
+   put_str("\n");
+   void* addr2 = get_kernel_pages(2);
+   put_str("\n get_kernel_page start vaddr2 is ");
+   put_int((uint32_t)addr2);
+   put_str("\n");
+
 
    while (1);
 
