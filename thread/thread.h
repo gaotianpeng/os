@@ -2,6 +2,7 @@
 #define __THREAD_THREAD_H
 
 #include "stdint.h"
+#include "list.h"
 
 typedef void thread_func(void*);
 
@@ -69,11 +70,25 @@ struct thread_stack {
     void* func_arg;         // 由kernel_thread所调用的函数所需的参数
 };
 
+// 进程或线程的控制块pcb
 struct task_struct {
     uint32_t* self_kstack;      // 各内核都有自己的内核栈
     enum task_status status;
-    uint8_t priority;           // 线程优先级
     char name[16];
+    uint8_t priority;           // 线程优先级
+    uint8_t ticks;              // 每次在处理器上执行的时间嘀嗒数
+
+    // 此任务自从在CPU上运行后至今占用了多少CPU嘀嗒数，也就是执行了多久
+    uint32_t elapsed_ticks;
+
+    // general_tag的作用是用于线程在一般的队列中的结点
+    struct list_elem general_tag;
+
+    // all_list_tag的作用是用于线程队列thread_all_list中的结点
+    struct list_elem all_list_tag;
+
+    uint32_t* pgdir;            // 进程自己页表的虚拟地址
+
     uint32_t stack_magic;       // 用这串数字做栈的边界标记，用于检测栈的溢出
 };
 
@@ -82,5 +97,8 @@ void thread_create(struct task_struct* pthread, thread_func function,
 void init_thread(struct task_struct* pthread, char* name, int prib);
 struct task_struct* thread_start(char* name, int prio, thread_func function,
         void* func_arg);
+struct task_struct* running_thread(void);
+void schedule(void);
+void thread_init(void);
 
 #endif // __THREAD_THREAD_
