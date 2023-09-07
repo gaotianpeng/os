@@ -56,7 +56,7 @@ void sema_up(struct semaphore* psema) {
 }
 
 // 获取锁plock
-void lock_aciqure(struct lock* plock) {
+void lock_acquire(struct lock* plock) {
     // 排除曾经自己已经持有锁但还未将其释放的情况
     if (plock->holder != running_thread()) {
         sema_down(&plock->semaphore);
