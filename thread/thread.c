@@ -13,6 +13,7 @@ struct task_struct* main_thread;        // 主线程PCB
 struct list thread_ready_list;	        // 就绪队列
 struct list thread_all_list;	        // 所有任务队列
 static struct list_elem* thread_tag;    // 用于保存队列中的线程结点
+
 extern void switch_to(struct task_struct* cur, struct task_struct* next);
 
 
@@ -21,9 +22,9 @@ extern void switch_to(struct task_struct* cur, struct task_struct* next);
     因此，取当前栈指针的高20位作为当前运行线程的PCB
 */
 struct task_struct* running_thread() {
-   uint32_t esp; 
-   asm ("mov %%esp, %0" : "=g" (esp));
-   return (struct task_struct*)(esp & 0xfffff000);
+    uint32_t esp;
+    asm ("mov %%esp, %0" : "=g" (esp));
+    return (struct task_struct*) (esp & 0xfffff000);
 }
 
 // 由kernel_thread去执行function(func_arg)
@@ -50,8 +51,7 @@ void thread_create(struct task_struct* pthread, thread_func function, void* func
     kthread_stack->eip = kernel_thread;
     kthread_stack->function = function;
     kthread_stack->func_arg = func_arg;
-    kthread_stack->ebp = kthread_stack->ebx = kthread_stack->esi = 
-            kthread_stack->edi = 0;
+    kthread_stack->ebp = kthread_stack->ebx = kthread_stack->edi = kthread_stack->esi = 0;
 }
 
 // 初始化线程基本信息
@@ -92,6 +92,8 @@ struct task_struct* thread_start(char* name, int prio, thread_func function,
     ASSERT(!elem_find(&thread_all_list, &thread->all_list_tag));
     // 加入全部线程队列
     list_append(&thread_all_list, &thread->all_list_tag);
+
+    return thread;
 }
 
 // 将kernel中的main函数完善为主线程
@@ -147,8 +149,8 @@ void thread_block(enum task_status stat) {
     /*
         stats 取值为 TASK_BLOCKED、TASK_WAITING、TASK_HANGING 时不会被调度
     */
-    ASSERT(((stat == TASK_BLOCKED) || (stat == TASK_WAITING)
-            || (stat == TASK_HANGING)));
+    ASSERT(stat == TASK_BLOCKED || stat == TASK_WAITING
+            || stat == TASK_HANGING);
 
     enum intr_status old_status = intr_disable();
     struct task_struct* cur_thread = running_thread();
@@ -161,14 +163,14 @@ void thread_block(enum task_status stat) {
 // 将线程pthread解除阻塞
 void thread_unblock(struct task_struct* pthread) {
     enum intr_status old_status = intr_disable();
-    ASSERT(((pthread->status == TASK_BLOCKED) || (pthread->status == TASK_RUNNING)
-        || (pthread->status == TASK_HANGING)));
+    ASSERT(pthread->status == TASK_BLOCKED || pthread->status == TASK_RUNNING
+        || pthread->status == TASK_HANGING);
 
     if (pthread->status != TASK_READY) {
         ASSERT(!elem_find(&thread_ready_list, &pthread->general_tag));
-        if (elem_find(&thread_ready_list, &pthread->general_tag)) {
-            PANIC("thread_unblock: blocked thread in thread_list\n");
-        }
+//        if (elem_find(&thread_ready_list, &pthread->general_tag)) {
+//            PANIC("thread_unblock: blocked thread in thread_list\n");
+//        }
 
         // 放到队列的最前面，使其尽快得到调度
         list_push(&thread_ready_list, &pthread->general_tag);

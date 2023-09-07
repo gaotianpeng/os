@@ -22,17 +22,13 @@ void sema_down(struct semaphore* psema) {
     // 用关中断保证原子操作
     enum intr_status old_status = intr_disable();
     while (psema->value == 0) {     // 若value 为0，表示已经被别人持有
-        ASSERT(!elem_find(&psema->waiters, &running_thread()->general_tag));
-        // 当前线程不应该已在信号量的waiters队列中
-        if (elem_find(&psema->waiters, &running_thread()->general_tag)) {
-            PANIC("sema_down: thread blocked has been in waiters_list\n");
-        }
-
+        struct task_struct* cur = running_thread();
+        ASSERT(!elem_find(&psema->waiters, &cur->general_tag));
         // 若信号量的值等于0，则当前线程把自己加入该锁的等待队列中，然后阻塞自己
-        list_append(&psema->waiters, &running_thread()->general_tag);
+        list_append(&psema->waiters, &cur->general_tag);
         thread_block(TASK_BLOCKED);     // 阻塞线程，直到被唤醒
     }
-    
+
     psema->value--;
     ASSERT(psema->value == 0);
     intr_set_status(old_status);
@@ -58,9 +54,10 @@ void sema_up(struct semaphore* psema) {
 // 获取锁plock
 void lock_acquire(struct lock* plock) {
     // 排除曾经自己已经持有锁但还未将其释放的情况
-    if (plock->holder != running_thread()) {
+    struct task_struct* cur = running_thread();
+    if (plock->holder != cur) {
         sema_down(&plock->semaphore);
-        plock->holder = running_thread();
+        plock->holder = cur;
         ASSERT(plock->holder_repeat_nr == 0);
         plock->holder_repeat_nr = 1;
     } else { // 如果已经持有锁

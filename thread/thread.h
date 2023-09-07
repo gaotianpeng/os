@@ -24,7 +24,7 @@ enum task_status {
         此栈在线程自己的内核栈中位置固定：所在页的最顶端    
 */
 struct intr_stack {
-    uint16_t vec_no;        // kernel中 宏VECTOR中push %1压入的中断号
+    uint32_t vec_no;        // kernel中 宏VECTOR中push %1压入的中断号
     uint32_t edi;
     uint32_t esi;
     uint32_t ebp;
@@ -78,7 +78,7 @@ struct task_struct {
     uint8_t priority;           // 线程优先级
     uint8_t ticks;              // 每次在处理器上执行的时间嘀嗒数
 
-    // 此任务自从在CPU上运行后至今占用了多少CPU嘀嗒数，也就是执行了多久
+// 此任务自从在CPU上运行后至今占用了多少CPU嘀嗒数，也就是执行了多久
     uint32_t elapsed_ticks;
 
     /*
@@ -96,12 +96,10 @@ struct task_struct {
     uint32_t stack_magic;       // 用这串数字做栈的边界标记，用于检测栈的溢出
 };
 
-void thread_create(struct task_struct* pthread, thread_func function,
-        void* func_arg);
-void init_thread(struct task_struct* pthread, char* name, int prib);
-struct task_struct* thread_start(char* name, int prio, thread_func function,
-        void* func_arg);
 struct task_struct* running_thread(void);
+void thread_create(struct task_struct* pthread, thread_func function,void* func_arg);
+void init_thread(struct task_struct* pthread, char* name, int prib);
+struct task_struct* thread_start(char* name, int prio, thread_func function, void* func_arg);
 void schedule(void);
 void thread_init(void);
 
