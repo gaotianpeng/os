@@ -9,14 +9,17 @@
 
 #define PAGE_SIZE 4096
 
-struct task_struct* main_thread;    // 主线程PCB
-struct list thread_ready_list;	    // 就绪队列
-struct list thread_all_list;	    // 所有任务队列
-static struct list_elem* thread_tag;// 用于保存队列中的线程结点
+struct task_struct* main_thread;        // 主线程PCB
+struct list thread_ready_list;	        // 就绪队列
+struct list thread_all_list;	        // 所有任务队列
+static struct list_elem* thread_tag;    // 用于保存队列中的线程结点
 extern void switch_to(struct task_struct* cur, struct task_struct* next);
 
 
-// 获取当前线程pcb指针
+/*
+    获取当前线程PCB指针，各个线程所用的0级栈指针都是在自己的PCB中
+    因此，取当前栈指针的高20位作为当前运行线程的PCB
+*/
 struct task_struct* running_thread() {
    uint32_t esp; 
    asm ("mov %%esp, %0" : "=g" (esp));
@@ -63,19 +66,18 @@ void init_thread(struct task_struct* pthread, char* name, int prio) {
         pthread->status = TASK_READY;
     }
 
-
     // self_kstack 是线程自己在0特权级下所用的栈，在线程创建之初，被初始化为线程PCB的最顶端
-   pthread->self_kstack = (uint32_t*)((uint32_t)pthread + PAGE_SIZE);
-   pthread->priority = prio;
-   pthread->ticks = prio;
-   pthread->elapsed_ticks = 0;
-   pthread->pgdir = NULL;
-   pthread->stack_magic = 0x19870916;	  // 自定义的魔数
+    pthread->self_kstack = (uint32_t*)((uint32_t)pthread + PAGE_SIZE);
+    pthread->priority = prio;
+    pthread->ticks = prio;
+    pthread->elapsed_ticks = 0;
+    pthread->pgdir = NULL;                  // 线程没有自己的地址空间
+    pthread->stack_magic = 0x19870916;	    // 自定义的魔数
 }
 
 struct task_struct* thread_start(char* name, int prio, thread_func function,
             void* func_arg) {
-    // pcb都位于内核空间,包括用户进程的pcb也是在内核空间
+    // PCB都位于内核空间，包括用户进程的PCB也是在内核空间
     struct task_struct* thread = get_kernel_pages(1);
 
     init_thread(thread, name, prio);
@@ -83,12 +85,12 @@ struct task_struct* thread_start(char* name, int prio, thread_func function,
 
     // 确保之前不在队列中
     ASSERT(!elem_find(&thread_ready_list, &thread->general_tag));
-    /* 加入就绪线程队列 */
+    // 加入就绪线程队列
     list_append(&thread_ready_list, &thread->general_tag);
 
-    /* 确保之前不在队列中 */
+    // 确保之前不在队列中
     ASSERT(!elem_find(&thread_all_list, &thread->all_list_tag));
-    /* 加入全部线程队列 */
+    // 加入全部线程队列
     list_append(&thread_all_list, &thread->all_list_tag);
 }
 
@@ -109,25 +111,32 @@ static void make_main_thread(void) {
    list_append(&thread_all_list, &main_thread->all_list_tag);
 }
 
+// 将当前线程换下处理器，并在就绪队列中找出下个可运行的程序，将其换上处理器
 void schedule() {
     ASSERT(intr_get_status() == INTR_OFF);
 
     struct task_struct* cur = running_thread(); 
-    if (cur->status == TASK_RUNNING) { // 若此线程只是cpu时间片到了,将其加入到就绪队列尾
+    if (cur->status == TASK_RUNNING) { // 若此线程只是cpu时间片到了，将其加入到就绪队列尾
         ASSERT(!elem_find(&thread_ready_list, &cur->general_tag));
         list_append(&thread_ready_list, &cur->general_tag);
         cur->ticks = cur->priority;     // 重新将当前线程的ticks再重置为其priority;
         cur->status = TASK_READY;
     } else { 
         /* 
-        若此线程需要某事件发生后才能继续上cpu运行,
-        不需要将其加入队列,因为当前线程不在就绪队列中。
+            若此线程需要某事件发生后才能继续上cpu运行,
+            不需要将其加入队列，因为当前线程不在就绪队列中
         */
     }
 
     ASSERT(!list_empty(&thread_ready_list));
     thread_tag = NULL;	  // thread_tag清空
-    thread_tag = list_pop(&thread_ready_list);   
+    /*
+        thread_tag 并不是线程，它仅仅是线程PCB中的general_tag或all_list_tag
+        要获得线程的信息，必须将其转换成PCB才行
+    */
+    thread_tag = list_pop(&thread_ready_list);
+
+    //(struct task_struct*)((int)thread_tag - (int)(&((struct task_struct*)0)->general_tag))
     struct task_struct* next = elem2entry(struct task_struct, general_tag, thread_tag);
     next->status = TASK_RUNNING;
     switch_to(cur, next);

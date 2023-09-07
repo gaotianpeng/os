@@ -71,15 +71,15 @@ static void idt_desc_init(void) {
     put_str("   idt_desc_init done\n");
 }
 
-// 通用的中断处理函数,一般用在异常出现时的处理
+// 通用的中断处理函数，一般用在异常出现时的处理
 static void general_intr_handler(uint8_t vec_nr) {
    if (vec_nr == 0x27 || vec_nr == 0x2f) {	// 0x2f是从片8259A上的最后一个irq引脚，保留
-      return;		//IRQ7和IRQ15会产生伪中断(spurious interrupt),无须处理。
+      return;		//IRQ7和IRQ15会产生伪中断(spurious interrupt)，无须处理。
    }
-   /* 将光标置为0,从屏幕左上角清出一片打印异常信息的区域,方便阅读 */
+   // 将光标置为0，从屏幕左上角清出一片打印异常信息的区域，方便阅读
    set_cursor(0);
    int cursor_pos = 0;
-   while(cursor_pos < 320) {
+   while (cursor_pos < 320) {
       put_char(' ');
       cursor_pos++;
    }
@@ -88,7 +88,7 @@ static void general_intr_handler(uint8_t vec_nr) {
    put_str("!!!!!!!      excetion message begin  !!!!!!!!\n");
    set_cursor(88);	// 从第2行第8个字符开始打印
    put_str(intr_name[vec_nr]);
-   if (vec_nr == 14) {	  // 若为Pagefault,将缺失的地址打印出来并悬停
+   if (vec_nr == 14) {	  // 若为Pagefault，将缺失的地址打印出来并悬停
       int page_fault_vaddr = 0; 
       asm ("movl %%cr2, %0" : "=r" (page_fault_vaddr));	  // cr2是存放造成page_fault的地址
       put_str("\npage fault addr is ");put_int(page_fault_vaddr); 
@@ -169,10 +169,6 @@ enum intr_status intr_get_status() {
 
 // 在中断处理程序数组第vector_no个元素中注册安装中断处理程序function
 void register_handler(uint8_t vector_no, intr_handler function) {
-   /* 
-      idt_table数组中的函数是在进入中断后根据中断向量号调用的,
-   见kernel/kernel.S的call [idt_table + %1*4] 
-   */
    idt_table[vector_no] = function;
 }
 

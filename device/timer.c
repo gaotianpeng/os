@@ -13,7 +13,7 @@
 #define READ_WRITE_LATCH      3
 #define PIT_CONTROL_PORT      0x43
 
-uint32_t ticks;          // ticks是内核自中断开启以来总共的嘀嗒数
+uint32_t ticks = 0;          // ticks是内核自中断开启以来总共的嘀嗒数
 
 // 把操作的计数器counter_no、读写锁属性rwl、计数器模式counter_mode写入模式控制寄存器并赋予初始值counter_value
 static void frequency_set(uint8_t counter_port,
@@ -35,8 +35,8 @@ static void intr_timer_handler(void) {
 
    ASSERT(cur_thread->stack_magic == 0x19870916);         // 检查栈是否溢出
 
-   cur_thread->elapsed_ticks++;	  // 记录此线程占用的cpu时间嘀
-   ticks++;	  //从内核第一次处理时间中断后开始至今的滴哒数,内核态和用户态总共的嘀哒数
+   cur_thread->elapsed_ticks++;	  // 记录此线程占用的cpu时间
+   ticks++;	  // 从内核第一次处理时间中断后开始至今的滴哒数，内核态和用户态的总和
 
    if (cur_thread->ticks == 0) {	  // 若进程时间片用完就开始调度新的进程上cpu
       schedule(); 

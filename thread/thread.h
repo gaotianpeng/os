@@ -81,13 +81,17 @@ struct task_struct {
     // 此任务自从在CPU上运行后至今占用了多少CPU嘀嗒数，也就是执行了多久
     uint32_t elapsed_ticks;
 
-    // general_tag的作用是用于线程在一般的队列中的结点
+    /*
+        general_tag的作用是用于线程在一般的队列中的结点
+        是线程的标签，当线程被加入到就绪队列thread_ready_list或其他等待队列中时，
+        就把该线程PCB中general_tag的地址加入队列
+    */
     struct list_elem general_tag;
 
     // all_list_tag的作用是用于线程队列thread_all_list中的结点
     struct list_elem all_list_tag;
 
-    uint32_t* pgdir;            // 进程自己页表的虚拟地址
+    uint32_t* pgdir;            // 进程自己页表的虚拟地址，线程此属性为NULL
 
     uint32_t stack_magic;       // 用这串数字做栈的边界标记，用于检测栈的溢出
 };
