@@ -105,4 +105,7 @@ struct task_struct* running_thread(void);
 void schedule(void);
 void thread_init(void);
 
+void thread_block(enum task_status stat);
+void thread_unblock(struct task_struct* pthread);
+
 #endif // __THREAD_THREAD_
