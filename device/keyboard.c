@@ -8,9 +8,9 @@
 
 // 键盘中断处理程序
 static void intr_keyboard_handler(void) {
-    put_char('k');
     // 必须要读取输出缓冲区寄存器，否则8042不再继续响应键盘中断
-    inb(KBD_BUF_PORT);
+    uint8_t scancode = inb(KBD_BUF_PORT);
+    put_int(scancode);
     return;
 } 
 
