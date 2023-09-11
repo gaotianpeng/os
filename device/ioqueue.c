@@ -19,7 +19,7 @@ bool ioq_full(struct ioqueue* ioq) {
     return next_pos(ioq->head) == ioq->tail;
 }
 
-static bool ioq_empty(struct ioqueue* ioq) {
+bool ioq_empty(struct ioqueue* ioq) {
     ASSERT(intr_get_status() == INTR_OFF);
     return ioq->head == ioq->tail;
 }

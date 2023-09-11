@@ -34,41 +34,42 @@ extern intr_handler intr_entry_table[IDT_DESC_CNT];	    // 声明引用定义在
 
 // 初始化可编程中断控制器8259A (pic/programmable interrupt controller)
 static void pic_init(void) {
-    // 初始化主片
-    outb (PIC_M_CTRL, 0x11);   // ICW1: 边沿触发，级联8259，需要ICW4.
-    outb (PIC_M_DATA, 0x20);   // ICW2: 起始中断向量号为0x20，也就是IR[0-7] 为 0x20 ~ 0x27.
-    outb (PIC_M_DATA, 0x04);   // ICW3: IR2接从片. 
-    outb (PIC_M_DATA, 0x01);   // ICW4: 8086模式, 正常EOI
+   // 初始化主片
+   outb (PIC_M_CTRL, 0x11);   // ICW1: 边沿触发，级联8259，需要ICW4.
+   outb (PIC_M_DATA, 0x20);   // ICW2: 起始中断向量号为0x20，也就是IR[0-7] 为 0x20 ~ 0x27.
+   outb (PIC_M_DATA, 0x04);   // ICW3: IR2接从片. 
+   outb (PIC_M_DATA, 0x01);   // ICW4: 8086模式, 正常EOI
 
-    // 初始化从片
-    outb (PIC_S_CTRL, 0x11);	// ICW1: 边沿触发,级联8259, 需要ICW4.
-    outb (PIC_S_DATA, 0x28);	// ICW2: 起始中断向量号为0x28，也就是IR[8-15] 为 0x28 ~ 0x2F.
-    outb (PIC_S_DATA, 0x02);	// ICW3: 设置从片连接到主片的IR2引脚
-    outb (PIC_S_DATA, 0x01);	// ICW4: 8086模式, 正常EOI
+   // 初始化从片
+   outb (PIC_S_CTRL, 0x11);	// ICW1: 边沿触发,级联8259, 需要ICW4.
+   outb (PIC_S_DATA, 0x28);	// ICW2: 起始中断向量号为0x28，也就是IR[8-15] 为 0x28 ~ 0x2F.
+   outb (PIC_S_DATA, 0x02);	// ICW3: 设置从片连接到主片的IR2引脚
+   outb (PIC_S_DATA, 0x01);	// ICW4: 8086模式, 正常EOI
 
-    // 只打开键盘中断
-    outb (PIC_M_DATA, 0xfd);
-    outb (PIC_S_DATA, 0xff);    // 从片上的所有外设都屏蔽
+   // 只打开键盘中断
+   //  outb (PIC_M_DATA, 0xfd);
+   outb (PIC_M_DATA, 0xfc);
+   outb (PIC_S_DATA, 0xff);    // 从片上的所有外设都屏蔽
 
-    put_str("   pic_init done\n");
+   put_str("   pic_init done\n");
 }
 
 // 创建中断门描述符
 static void make_idt_desc(struct gate_desc* p_gdesc, uint8_t attr, intr_handler function) { 
-    p_gdesc->func_offset_low_word = (uint32_t)function & 0x0000FFFF;
-    p_gdesc->selector = SELECTOR_K_CODE;
-    p_gdesc->dcount = 0;
-    p_gdesc->attribute = attr;
-    p_gdesc->func_offset_high_word = ((uint32_t)function & 0xFFFF0000) >> 16;
+   p_gdesc->func_offset_low_word = (uint32_t)function & 0x0000FFFF;
+   p_gdesc->selector = SELECTOR_K_CODE;
+   p_gdesc->dcount = 0;
+   p_gdesc->attribute = attr;
+   p_gdesc->func_offset_high_word = ((uint32_t)function & 0xFFFF0000) >> 16;
 }
 
 // 初始化中断描述符表
 static void idt_desc_init(void) {
-    int i;
-    for (i = 0; i < IDT_DESC_CNT; i++) {
-        make_idt_desc(&idt[i], IDT_DESC_ATTR_DPL0, intr_entry_table[i]); 
-    }
-    put_str("   idt_desc_init done\n");
+   int i;
+   for (i = 0; i < IDT_DESC_CNT; i++) {
+      make_idt_desc(&idt[i], IDT_DESC_ATTR_DPL0, intr_entry_table[i]); 
+   }
+   put_str("   idt_desc_init done\n");
 }
 
 // 通用的中断处理函数，一般用在异常出现时的处理
@@ -98,7 +99,6 @@ static void general_intr_handler(uint8_t vec_nr) {
    // 不会出现调度进程的情况。故下面的死循环不会再被中断。
    while(1);
 }
-
 
 // 完成一般中断处理函数注册及异常名称注册
 static void exception_init(void) {			    // 完成一般中断处理函数注册及异常名称注册
