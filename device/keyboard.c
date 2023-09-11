@@ -3,6 +3,7 @@
 #include "interrupt.h"
 #include "io.h"
 #include "global.h"
+#include "ioqueue.h"
 
 /*
     8042 输入和输出缓冲区寄存器的端口
@@ -47,6 +48,8 @@
 #define ctrl_r_make  	    0xe01d
 #define ctrl_r_break 	    0xe09d
 #define caps_lock_make 	    0x3a
+
+struct ioqueue kbd_buf;
 
 /* 
     操作控制键是与其他键配合时是先被按下的，因此，每次在接收一下按键时，需要查看上一次是
@@ -222,7 +225,20 @@ static void intr_keyboard_handler(void) {
 
         // 只处理ascii码不为0的键
         if (cur_char) {
-            put_char(cur_char);
+            /*****************  快捷键ctrl+l和ctrl+u的处理 *********************
+             * 下面是把ctrl+l和ctrl+u这两种组合键产生的字符置为:
+             * cur_char的asc码-字符a的asc码，此差值比较小，
+             * 属于asc码表中不可见的字符部分。故不会产生可见字符。
+             * 我们在shell中将ascii值为l-a和u-a的分别处理为清屏和删除输入的快捷键
+             */
+            if ((ctrl_down_last && cur_char == 'l') || (ctrl_down_last && cur_char == 'u')) {
+                cur_char -= 'a';
+            }
+
+            if (!ioq_full(&kbd_buf)) {
+                put_char(cur_char);	    // 临时的
+                ioq_putchar(&kbd_buf, cur_char);
+            }
             return;
         }
 
@@ -250,6 +266,9 @@ static void intr_keyboard_handler(void) {
 // 键盘初始化
 void keyboard_init() {
     put_str("keyboard init start\n");
+    // ioqueue_init(&kbd_buf);
+    ioqueue_init(&kbd_buf);
+
     register_handler(0x21, intr_keyboard_handler);
     put_str("keyboard init donw\n");
 }
