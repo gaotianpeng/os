@@ -3,6 +3,8 @@
 
 #include "stdint.h"
 #include "list.h"
+#include "bitmap.h"
+#include "memory.h"
 
 typedef void thread_func(void*);
 
@@ -93,8 +95,12 @@ struct task_struct {
 
     uint32_t* pgdir;            // 进程自己页表的虚拟地址，线程此属性为NULL
 
+    struct virtual_addr userprog_vaddr; // 用户进程的虚拟地址池
     uint32_t stack_magic;       // 用这串数字做栈的边界标记，用于检测栈的溢出
 };
+
+extern struct list thread_ready_list;
+extern struct list thread_all_list;
 
 struct task_struct* running_thread(void);
 void thread_create(struct task_struct* pthread, thread_func function,void* func_arg);
