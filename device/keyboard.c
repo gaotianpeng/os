@@ -49,6 +49,9 @@
 #define caps_lock_make 	    0x3a
 
 /* 
+    操作控制键是与其他键配合时是先被按下的，因此，每次在接收一下按键时，需要查看上一次是
+    否有按下盯关的操作控制键
+
     定义以下变量记录相应键是否按下的状态,
     ext_scancode用于记录makecode是否以0xe0开头
 */
@@ -123,7 +126,10 @@ static char keymap[][2] = {
 /*其它按键暂不处理*/
 };
 
-// 键盘中断处理程序
+/*
+    键盘中断处理程序，始终是每次处理一个字节，当扫描码中是多字节时，或者有组合键时，要定义额外的
+    全局变量来记录它们曾经被按下过
+*/
 static void intr_keyboard_handler(void) {
     // 这次中断发生前的上一次中断，以下任意三个键是否有按下
     bool ctrl_down_last = ctrl_status;
@@ -148,9 +154,17 @@ static void intr_keyboard_handler(void) {
         ext_scancode = false;   // 关闭e0标记
     }
 
-    break_code = ((scan_code & 0x0080) != 0);   // 获取break_code
+    /*
+        判断扫描码是否为断码，断码第8位为1
+        用扫描码scancode和0x0080进行位与操作，此时bread_code的值为true或false
+     */
+    break_code = ((scan_code & 0x0080) != 0);
 
-    if (break_code) { // 若是断码break_code(按键弹起时产生的扫描码)
+    /* 
+        判断此次按键(扫描码)对应的字符是什么
+        通码，则是keymap中的索引，断码，则需要先将其还原为通码，然后检索keymap
+    */
+    if (break_code) {
         /* 
             由于ctrl_r 和alt_r的make_code和break_code都是两字节，
             所以可用下面的方法取make_code，多字节的扫描码暂不处理 
@@ -166,7 +180,9 @@ static void intr_keyboard_handler(void) {
         }
 
         return;
-    // 若为通码,只处理数组中定义的键以及alt_right和ctrl键,全是make_code
+    /*
+        根据通码和shift键是否按下的情况，在keymap中找到按键对应的字符
+    */
     } else if ((scan_code > 0x00 && scan_code < 0x3b) || 
             (scan_code == alt_r_make) || 
             (scan_code == ctrl_r_make)) {
@@ -201,7 +217,7 @@ static void intr_keyboard_handler(void) {
             }
         }
 
-        uint8_t index = (scan_code &= 0x00ff);  // 将扫描码的高字节置0,主要是针对高字节是e0的扫描码.
+        uint8_t index = (scan_code &= 0x00ff);  // 将扫描码的高字节置0，主要是针对高字节是e0的扫描码
         char cur_char = keymap[index][shift];  // 在数组中找到对应的字符
 
         // 只处理ascii码不为0的键
