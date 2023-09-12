@@ -1,6 +1,6 @@
 #include "syscall.h"
 
-/* 无参数的系统调用 */
+// 无参数的系统调用
 #define _syscall0(NUMBER) ({				       \
    int retval;					               \
    asm volatile (					       \
@@ -24,7 +24,7 @@
    retval;						       \
 })
 
-/* 两个参数的系统调用 */
+// 两个参数的系统调用
 #define _syscall2(NUMBER, ARG1, ARG2) ({		       \
    int retval;						       \
    asm volatile (					       \
@@ -36,7 +36,7 @@
    retval;						       \
 })
 
-/* 三个参数的系统调用 */
+// 三个参数的系统调用
 #define _syscall3(NUMBER, ARG1, ARG2, ARG3) ({		       \
    int retval;						       \
    asm volatile (					       \
@@ -48,7 +48,13 @@
    retval;						       \
 })
 
-/* 返回当前任务pid */
+// 返回当前任务pid
 uint32_t getpid() {
    return _syscall0(SYS_GETPID);
 }
+
+// 打印字符串str
+uint32_t write(char* str) {
+   return _syscall1(SYS_WRITE, str);
+}
+
