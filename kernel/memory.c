@@ -71,6 +71,7 @@ static void* vaddr_get(enum pool_flags pf, uint32_t pg_cnt) {
         while (cnt < pg_cnt) {
             bitmap_set(&cur->userprog_vaddr.vaddr_bitmap, bit_idx_start + cnt++, 1);
         }
+        vaddr_start = cur->userprog_vaddr.vaddr_start + bit_idx_start * PG_SIZE;
         // (0xc0000000 - PG_SIZE)做为用户3级栈已经在start_process被分配
         ASSERT((uint32_t)vaddr_start < (0xc0000000 - PG_SIZE));
     }
