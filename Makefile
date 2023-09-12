@@ -19,7 +19,8 @@ OBJS = $(BUILD_DIR)/main.o $(BUILD_DIR)/init.o $(BUILD_DIR)/interrupt.o \
 		$(BUILD_DIR)/memory.o $(BUILD_DIR)/thread.o ${BUILD_DIR}/list.o \
     	$(BUILD_DIR)/switch.o $(BUILD_DIR)/console.o $(BUILD_DIR)/sync.o \
 		$(BUILD_DIR)/keyboard.o $(BUILD_DIR)/ioqueue.o $(BUILD_DIR)/tss.o \
-	   	$(BUILD_DIR)/process.o  $(BUILD_DIR)/syscall.o $(BUILD_DIR)/syscall_init.o
+	   	$(BUILD_DIR)/process.o  $(BUILD_DIR)/syscall.o $(BUILD_DIR)/syscall_init.o \
+		$(BUILD_DIR)/stdio.o
 
 #####################################
 $(BUILD_DIR)/mbr.bin: boot/mbr.asm
@@ -109,6 +110,11 @@ $(BUILD_DIR)/syscall_init.o: userprog/syscall_init.c userprog/syscall_init.h \
 	lib/stdint.h lib/user/syscall.h lib/kernel/print.h thread/thread.h \
 	lib/kernel/list.h kernel/global.h lib/kernel/bitmap.h kernel/memory.h
 	$(CC) $(CFLAGS) $< -o $@
+
+$(BUILD_DIR)/stdio.o: lib/stdio.c lib/stdio.h lib/stdint.h kernel/interrupt.h \
+    	lib/stdint.h kernel/global.h lib/string.h lib/user/syscall.h lib/kernel/print.h
+	$(CC) $(CFLAGS) $< -o $@
+
 
 #####################################
 $(BUILD_DIR)/kernel.o: kernel/kernel.asm
