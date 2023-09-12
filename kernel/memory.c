@@ -50,7 +50,6 @@ static void* vaddr_get(enum pool_flags pf, uint32_t pg_cnt) {
         }
         vaddr_start = kernel_vaddr.vaddr_start + bit_idx_start * PG_SIZE;
     } else {
-        // 用户内存池
         struct task_struct* cur = running_thread();
         bit_idx_start = bitmap_scan(&cur->userprog_vaddr.vaddr_bitmap, pg_cnt);
         if (bit_idx_start == -1) {
@@ -60,6 +59,7 @@ static void* vaddr_get(enum pool_flags pf, uint32_t pg_cnt) {
         while (cnt < pg_cnt) {
             bitmap_set(&cur->userprog_vaddr.vaddr_bitmap, bit_idx_start + cnt++, 1);
         }
+        // (0xc0000000 - PG_SIZE)做为用户3级栈已经在start_process被分配
         ASSERT((uint32_t)vaddr_start < (0xc0000000 - PG_SIZE));
     }
 
@@ -166,11 +166,13 @@ void* malloc_page(enum pool_flags pf, uint32_t pg_cnt) {
 
 // 从内核物理内存池中申请pg_cnt页内存，成功则返回其虚拟地址，失败则返回NULL
 void* get_kernel_pages(uint32_t pg_cnt) {
+    lock_acquire(&kernel_pool.lock);
     void* vaddr = malloc_page(PF_KERNEL, pg_cnt);
     // 若分配的地址不为空，则将分配的页清0后返回
     if (vaddr != NULL) {
         memset(vaddr, 0, pg_cnt * PG_SIZE);
     }
+    lock_release(&kernel_pool.lock);
 
     return vaddr;
 }
@@ -192,12 +194,13 @@ void* get_a_page(enum pool_flags pf, uint32_t vaddr) {
     struct task_struct* cur = running_thread();
     int32_t bit_idx = -1;
 
+    // 若当前是用户进程申请用户内存，就修改用户进程自己的虚拟地址位图
     if (cur->pgdir != NULL && pf == PF_USER) {
         bit_idx = (vaddr - cur->userprog_vaddr.vaddr_start) / PG_SIZE;
         ASSERT(bit_idx > 0);
         bitmap_set(&cur->userprog_vaddr.vaddr_bitmap, bit_idx, 1);
-
-    } else if (cur->pgdir == NULL && pf == PF_KERNEL){
+    } else if (cur->pgdir == NULL && pf == PF_KERNEL) {
+        // 如果是内核线程申请内核内存，就修改kernel_vaddr
         bit_idx = (vaddr - kernel_vaddr.vaddr_start) / PG_SIZE;
         ASSERT(bit_idx > 0);
         bitmap_set(&kernel_vaddr.vaddr_bitmap, bit_idx, 1);
@@ -214,14 +217,15 @@ void* get_a_page(enum pool_flags pf, uint32_t vaddr) {
     return (void*)vaddr;
 }
 
-/* 得到虚拟地址映射到的物理地址 */
+// 得到虚拟地址映射到的物理地址
 uint32_t addr_v2p(uint32_t vaddr) {
    uint32_t* pte = pte_ptr(vaddr);
-/* (*pte)的值是页表所在的物理页框地址,
- * 去掉其低12位的页表项属性+虚拟地址vaddr的低12位 */
+    /* 
+        (*pte)的值是页表所在的物理页框地址,
+        去掉其低12位的页表项属性+虚拟地址vaddr的低12位
+    */
    return ((*pte & 0xfffff000) + (vaddr & 0x00000fff));
 }
-
 
 // 初始化内存池
 static void mem_pool_init(uint32_t all_mem) {
@@ -281,10 +285,9 @@ static void mem_pool_init(uint32_t all_mem) {
     // 将位图置0
     bitmap_init(&kernel_pool.pool_bitmap);
     bitmap_init(&user_pool.pool_bitmap);
-
     
-   lock_init(&kernel_pool.lock);
-   lock_init(&user_pool.lock);
+    lock_init(&kernel_pool.lock);
+    lock_init(&user_pool.lock);
 
     // 初始化内核虚拟地址的位图，按实际物理内存大小生成数组
     // 用于维护内核堆的虚拟地址，所以要和内核内存池大小一致
@@ -292,8 +295,8 @@ static void mem_pool_init(uint32_t all_mem) {
 
     // 位图的数组指向一块未使用的内存,目前定位在内核内存池和用户内存池之外
     kernel_vaddr.vaddr_bitmap.bits = (void*)(MEM_BITMAP_BASE + kbm_length + ubm_length);
-    kernel_vaddr.vaddr_start = K_HEAP_START;
 
+    kernel_vaddr.vaddr_start = K_HEAP_START;
     bitmap_init(&kernel_vaddr.vaddr_bitmap);
     put_str("   mem_pool_init done\n");
 }

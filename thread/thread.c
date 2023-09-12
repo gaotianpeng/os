@@ -6,6 +6,7 @@
 #include "interrupt.h"
 #include "memory.h"
 #include "debug.h"
+#include "process.h"
 
 #define PAGE_SIZE 4096
 
@@ -141,6 +142,9 @@ void schedule() {
     //(struct task_struct*)((int)thread_tag - (int)(&((struct task_struct*)0)->general_tag))
     struct task_struct* next = elem2entry(struct task_struct, general_tag, thread_tag);
     next->status = TASK_RUNNING;
+
+    process_activate(next);
+    
     switch_to(cur, next);
 }
 

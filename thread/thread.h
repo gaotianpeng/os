@@ -80,7 +80,7 @@ struct task_struct {
     uint8_t priority;           // 线程优先级
     uint8_t ticks;              // 每次在处理器上执行的时间嘀嗒数
 
-// 此任务自从在CPU上运行后至今占用了多少CPU嘀嗒数，也就是执行了多久
+    // 此任务自从在CPU上运行后至今占用了多少CPU嘀嗒数，也就是执行了多久
     uint32_t elapsed_ticks;
 
     /*
