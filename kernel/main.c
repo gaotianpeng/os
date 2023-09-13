@@ -22,7 +22,7 @@ int main(void) {
    process_execute(u_prog_b, "u_prog_b");
    thread_start("k_thread_a", 31, k_thread_a, "I am thread_a");
    thread_start("k_thread_b", 31, k_thread_b, "I am thread_b");
-   while(1);
+   while (1);
    return 0;
 }
 
@@ -39,14 +39,13 @@ void k_thread_a(void* arg) {
    console_put_char('\n');
 
    int cpu_delay = 100000;
-   while(cpu_delay-- > 0);
+   while (cpu_delay-- > 0);
    sys_free(addr1);
    sys_free(addr2);
    sys_free(addr3);
-   while(1);
+   while (1);
 }
 
-/* 在线程中运行的函数 */
 void k_thread_b(void* arg) {     
    void* addr1 = sys_malloc(256);
    void* addr2 = sys_malloc(255);
@@ -60,11 +59,11 @@ void k_thread_b(void* arg) {
    console_put_char('\n');
 
    int cpu_delay = 100000;
-   while(cpu_delay-- > 0);
+   while (cpu_delay-- > 0);
    sys_free(addr1);
    sys_free(addr2);
    sys_free(addr3);
-   while(1);
+   while (1);
 }
 
 void u_prog_a(void) {
@@ -74,11 +73,11 @@ void u_prog_a(void) {
    printf(" prog_a malloc addr:0x%x,0x%x,0x%x\n", (int)addr1, (int)addr2, (int)addr3);
 
    int cpu_delay = 100000;
-   while(cpu_delay-- > 0);
+   while (cpu_delay-- > 0);
    free(addr1);
    free(addr2);
    free(addr3);
-   while(1);
+   while (1);
 }
 
 void u_prog_b(void) {
@@ -88,9 +87,9 @@ void u_prog_b(void) {
    printf(" prog_b malloc addr:0x%x,0x%x,0x%x\n", (int)addr1, (int)addr2, (int)addr3);
 
    int cpu_delay = 100000;
-   while(cpu_delay-- > 0);
+   while (cpu_delay-- > 0);
    free(addr1);
    free(addr2);
    free(addr3);
-   while(1);
+   while (1);
 }

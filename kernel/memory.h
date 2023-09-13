@@ -24,16 +24,19 @@ struct virtual_addr {
     uint32_t vaddr_start;           // 虚拟地址的起始地址
 };
 
+// 内存块
 struct mem_block {
     struct list_elem free_elem;
 };
 
+// 内存块描述符，一个 mem_block_desc 包含多个 arena
 struct mem_block_desc {
     uint32_t block_size;            // 内存块大小
     uint32_t blocks_per_arena;      // 本arena中可容纳此mem_block的数量
     struct list free_list;          // 目前可用的 mem_block 链表
 };
 
+// 16、32、64、128、256、512、1024
 #define DESC_CNT 7	   // 内存块描述符个数
 
 
