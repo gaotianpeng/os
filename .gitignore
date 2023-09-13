@@ -3,4 +3,5 @@
 cmake-build-debug
 build
 hd.img
+hd50M.img
 bx_enh_dbg.ini
