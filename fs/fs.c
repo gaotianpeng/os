@@ -59,9 +59,8 @@ static void partition_format(struct partition* part) {
         sb.inode_bitmap_lba, sb.inode_bitmap_sects, sb.inode_table_lba, sb.inode_table_sects, sb.data_start_lba);
 
     struct disk* hd = part->my_disk;
-    /*******************************
-     * 1 将超级块写入本分区的1扇区 *
-     ******************************/
+
+    // Step 1: 将超级块写入本分区的1扇区
     ide_write(hd, part->start_lba + 1, &sb, 1);
     printk("   super_block_lba:0x%x\n", part->start_lba + 1);
 
@@ -70,9 +69,7 @@ static void partition_format(struct partition* part) {
     buf_size = (buf_size >= sb.inode_table_sects ? buf_size : sb.inode_table_sects) * SECTOR_SIZE;
     uint8_t* buf = (uint8_t*)sys_malloc(buf_size);	// 申请的内存由内存管理系统清0后返回
 
-    /**************************************
-     * 2 将块位图初始化并写入sb.block_bitmap_lba *
-     *************************************/
+    // Setp 2: 将块位图初始化并写入sb.block_bitmap_lba
     // 初始化块位图block_bitmap
     buf[0] |= 0x01;       // 第0个块预留给根目录, 位图中先占位
     uint32_t block_bitmap_last_byte = block_bitmap_bit_len / 8;
@@ -89,9 +86,7 @@ static void partition_format(struct partition* part) {
     }
     ide_write(hd, sb.block_bitmap_lba, buf, sb.block_bitmap_sects);
 
-    /***************************************
-     * 3 将inode位图初始化并写入sb.inode_bitmap_lba *
-     ***************************************/
+    // Seep 3: 将inode位图初始化并写入sb.inode_bitmap_lba
     // 先清空缓冲区
     memset(buf, 0, buf_size);
     buf[0] |= 0x1;      // 第0个inode分给了根目录
@@ -103,9 +98,7 @@ static void partition_format(struct partition* part) {
     */
     ide_write(hd, sb.inode_bitmap_lba, buf, sb.inode_bitmap_sects);
 
-    /***************************************
-     * 4 将inode数组初始化并写入sb.inode_table_lba *
-     ***************************************/
+    // Step 4: 将inode数组初始化并写入sb.inode_table_lba
     // 准备写inode_table中的第0项,即根目录所在的inode
     memset(buf, 0, buf_size);  // 先清空缓冲区buf
     struct inode* i = (struct inode*)buf; 
@@ -114,9 +107,7 @@ static void partition_format(struct partition* part) {
     i->i_sectors[0] = sb.data_start_lba;	     // 由于上面的memset,i_sectors数组的其它元素都初始化为0 
     ide_write(hd, sb.inode_table_lba, buf, sb.inode_table_sects);
 
-    /***************************************
-     * 5 将根目录初始化并写入sb.data_start_lba
-     ***************************************/
+    // Step 5: 将根目录初始化并写入sb.data_start_lba
     // 写入根目录的两个目录项.和..
     memset(buf, 0, buf_size);
     struct dir_entry* p_de = (struct dir_entry*)buf;
