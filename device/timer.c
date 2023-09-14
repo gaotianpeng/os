@@ -47,7 +47,7 @@ static void intr_timer_handler(void) {
    }
 }
 
-// 以tick为单位的sleep，任何时间形式的sleep会转换为此ticks形式
+// 以tick为单位的sleep, 任何时间形式的sleep会转换为此ticks形式
 static void ticks_to_sleep(uint32_t sleep_ticks) {
    uint32_t start_tick = ticks;
 

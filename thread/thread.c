@@ -11,17 +11,16 @@
 
 #define PAGE_SIZE 4096
 
-struct task_struct* main_thread;        // 主线程PCB
-struct task_struct* idle_thread;        // idle 线程
-struct list thread_ready_list;	        // 就绪队列
-struct list thread_all_list;	        // 所有任务队列
-struct lock pid_lock;                   // 分配pid锁
-static struct list_elem* thread_tag;    // 用于保存队列中的线程结点
+struct task_struct* main_thread;          // 主线程PCB
+struct task_struct* idle_thread;          // idle 线程
+struct list thread_ready_list;	         // 就绪队列
+struct list thread_all_list;	            // 所有任务队列
+struct lock pid_lock;                     // 分配pid锁
+static struct list_elem* thread_tag;      // 用于保存队列中的线程结点
 
 extern void switch_to(struct task_struct* cur, struct task_struct* next);
 
 
-// 系统空闲时运行的线程
 static void idle(void* arg) {
    while (1) {
       thread_block(TASK_BLOCKED);
@@ -31,8 +30,8 @@ static void idle(void* arg) {
 }
 
 /*
-    获取当前线程PCB指针，各个线程所用的0级栈指针都是在自己的PCB中
-    因此，取当前栈指针的高20位作为当前运行线程的PCB
+    获取当前线程PCB指针, 各个线程所用的0级栈指针都是在自己的PCB中
+    因此, 取当前栈指针的高20位作为当前运行线程的PCB
 */
 struct task_struct* running_thread() {
    uint32_t esp;
@@ -122,15 +121,15 @@ struct task_struct* thread_start(char* name, int prio, thread_func function,
 // 将kernel中的main函数完善为主线程
 static void make_main_thread(void) {
    /* 
-      因为main线程早已运行,咱们在loader.S中进入内核时的mov esp,0xc009f000,
-      就是为其预留了tcb,地址为0xc009e000,因此不需要通过get_kernel_page另分配一页
+      因为main线程早已运行, 在loader中进入内核时的 mov esp, 0xc009f000
+      就是为其预留了tcb, 地址为0xc009e000, 因此不需要通过get_kernel_page另分配一页
    */
    main_thread = running_thread();
    init_thread(main_thread, "main", 31);
 
    /* 
-      main函数是当前线程,当前线程不在thread_ready_list中,
-      所以只将其加在thread_all_list中. 
+      main函数是当前线程, 当前线程不在thread_ready_list中,
+      所以只将其加在thread_all_list中.
    */
    ASSERT(!elem_find(&thread_all_list, &main_thread->all_list_tag));
    list_append(&thread_all_list, &main_thread->all_list_tag);
@@ -153,7 +152,7 @@ void schedule() {
       */
    }
 
-   /* 如果就绪队列中没有可运行的任务,就唤醒idle */
+   // 如果就绪队列中没有可运行的任务, 就唤醒idle
    if (list_empty(&thread_ready_list)) {
       thread_unblock(idle_thread);
    }
@@ -211,7 +210,7 @@ void thread_unblock(struct task_struct* pthread) {
    intr_set_status(old_status);
 }
 
-// 主动让出cpu，换其它线程运行
+// 主动让出cpu, 换其它线程运行
 void thread_yield(void) {
    struct task_struct* cur = running_thread();
    enum intr_status old_status = intr_disable();

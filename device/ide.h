@@ -21,21 +21,24 @@ struct partition {
 
 // 硬盘结构
 struct disk {
-    char name[8];                   // 本硬盘的名称，如sda等
-    struct ide_channel* my_channel; // 此块硬盘归属于哪个ide通道
-    uint8_t dev_no;                 // 本硬盘是主0还是从1
-    struct partition prim_parts[4];  // 主分区顶多是4个
-    struct partition logic_parts[8];// 逻辑分区数量无限，但总得有个支持的上限，那就支持8个
+    char name[8];                       // 本硬盘的名称, 如sda等
+    struct ide_channel* my_channel;     // 此块硬盘归属于哪个ide通道
+    uint8_t dev_no;                     // 本硬盘是主0还是从1
+    struct partition prim_parts[4];     // 主分区顶多是4个
+    struct partition logic_parts[8];    // 逻辑分区数量无限, 但总得有个支持的上限, 那就支持8个
 };
 
 // ata通道结构
 struct ide_channel {
     char name[8];               // 本ata通道名称 
     uint16_t port_base;         // 本通道的起始端口号
-    uint8_t irq_no;             // 本通道所用的中断号
-    struct lock lock;		    // 通道锁
+    uint8_t irq_no;             // 本通道所用的中断号, 硬盘的中断处理程序中要根据中断号来判断在哪个通道中操作
+    struct lock lock;		    // 通道锁, 1个通道有主、从两块硬盘。
+                                // 一个通道只能有1个中断信号，一次只允许通道中的1个硬盘操作，因此在通道中设置锁来实现互斥
     bool expecting_intr;        // 表示等待硬盘的中断
     struct semaphore disk_done; // 用于阻塞、唤醒驱动程序
+                                // 驱动程序在向硬盘发送命令后，在等待硬盘工作期间，通过此信号阻塞自己
+                                // 等硬盘工作完成后会发出中断，中断处理程序通过此信号将硬盘驱动程序唤醒
     struct disk devices[2];     // 一个通道上连接两个硬盘，一主一从
 };
 
