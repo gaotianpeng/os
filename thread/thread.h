@@ -6,8 +6,11 @@
 #include "bitmap.h"
 #include "memory.h"
 
-typedef void thread_func(void*);
 
+#define MAX_FILES_OPEN_PER_PROC 8
+
+
+typedef void thread_func(void*);
 typedef int16_t pid_t;
 
 // 进程或线程的状态
@@ -85,6 +88,8 @@ struct task_struct {
 
     // 此任务自从在CPU上运行后至今占用了多少CPU嘀嗒数，也就是执行了多久
     uint32_t elapsed_ticks;
+
+    int32_t fd_table[MAX_FILES_OPEN_PER_PROC];      // 文件描述符數組
 
     /*
         general_tag的作用是用于线程在一般的队列中的结点
