@@ -149,7 +149,6 @@ mk_dir:
 hd:
 	$(shell rm -rf $(DISK_IMG))
 	bximage -q -hd=16 -func=create -sectsize=512 -imgmode=flat $(DISK_IMG)
-	bximage -q -hd=50 -func=create -sectsize=512 -imgmode=flat $(DISK_IMG2)
 	dd if=$(BUILD_DIR)/mbr.bin of=hd.img bs=512 count=1  conv=notrunc
 	dd if=$(BUILD_DIR)/loader.bin of=hd.img bs=512 count=4 seek=2 conv=notrunc
 	dd if=$(BUILD_DIR)/kernel.bin \
@@ -168,3 +167,6 @@ all: mk_dir build hd
 
 bochs: all
 	bochs -q -f bochsrc
+
+# bximage -q -hd=50 -func=create -sectsize=512 -imgmode=flat hd50M.img
+# echo -e  "n\np\n1\n\n+4M\nn\ne\n2\n\n\nn\n\n+5M\nn\n\n+6M\nn\n\n+7M\nn\n\n+8M\nn\n\n+9M\nn\n\n\nw\n" | fdisk hd50M.img &> /dev/null
