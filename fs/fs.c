@@ -11,7 +11,77 @@
 #include "debug.h"
 #include "memory.h"
 
-// 格式化分区，也就是初始化分区的元信息，创建文件系统
+struct partition* cur_part;         // 默认情况下操作的是哪个分区
+
+
+// 在分区链表中找到名为part_name的分区, 并将其指针赋值给cur_part
+static bool mount_partition(struct list_elem* pelem, int arg) {
+    char* part_name = (char*)arg;
+    struct partition* part = elem2entry(struct partition, part_tag, pelem);
+    if (!strcmp(part->name, part_name)) {
+        cur_part = part;
+        struct disk* hd = cur_part->my_disk;
+
+        // sb_buf用来存储从硬盘上读入的超级块
+        struct super_block* sb_buf = (struct super_block*)sys_malloc(SECTOR_SIZE);
+
+        // 在内存中创建分区cur_part的超级块
+        cur_part->sb = (struct super_block*)sys_malloc(sizeof(struct super_block));
+        if (cur_part->sb == NULL) {
+            PANIC("alloc memory failed!");
+        }
+
+        // 读入超级块
+        memset(sb_buf, 0, SECTOR_SIZE);
+        ide_read(hd, cur_part->start_lba + 1, sb_buf, 1);   
+
+        // 把sb_buf中超级块的信息复制到分区的超级块sb中
+        memcpy(cur_part->sb, sb_buf, sizeof(struct super_block)); 
+
+        /**********     将硬盘上的块位图读入到内存    ****************/
+        cur_part->block_bitmap.bits = (uint8_t*)sys_malloc(sb_buf->block_bitmap_sects * SECTOR_SIZE);
+        if (cur_part->block_bitmap.bits == NULL) {
+            PANIC("alloc memory failed!");
+        }
+        cur_part->block_bitmap.btmp_bytes_len = sb_buf->block_bitmap_sects * SECTOR_SIZE;
+        // 从硬盘上读入块位图到分区的block_bitmap.bits
+        ide_read(hd, sb_buf->block_bitmap_lba, cur_part->block_bitmap.bits, sb_buf->block_bitmap_sects);   
+        /*************************************************************/
+
+        /**********     将硬盘上的inode位图读入到内存    ************/
+        cur_part->inode_bitmap.bits = (uint8_t*)sys_malloc(sb_buf->inode_bitmap_sects * SECTOR_SIZE);
+        if (cur_part->inode_bitmap.bits == NULL) {
+            PANIC("alloc memory failed!");
+        }
+        cur_part->inode_bitmap.btmp_bytes_len = sb_buf->inode_bitmap_sects * SECTOR_SIZE;
+        // 从硬盘上读入inode位图到分区的inode_bitmap.bits
+        ide_read(hd, sb_buf->inode_bitmap_lba, cur_part->inode_bitmap.bits, sb_buf->inode_bitmap_sects);   
+        /*************************************************************/
+
+        list_init(&cur_part->open_inodes);
+        printk("mount %s done!\n", part->name);
+
+        /* 
+            此处返回true是为了迎合主调函数list_traversal的实现, 与函数本身功能无关。
+            只有返回true时list_traversal才会停止遍历,减少了后面元素无意义的遍历.
+        */
+        return true;
+    }
+    return false;     // 使list_traversal继续遍历
+}
+
+
+/*
+    格式化分区，也就是初始化分区的元信息，创建文件系统
+    创建文件系统就是创建文件系统所需要的元信息, 这包括超级块位置及大小、空闲块位图的位置及大小
+    inode位图的位置及大小、inode数组的位置及大小、空闲块起始地址、根目录起始地址
+    创建步骤如下
+    1) 根据分区part大小, 计算分区文件系统各元信息需要的扇区数及位置
+    2）在内存中创建超级块，将以上步骤计算的元信息写入超级块
+    3) 将超级块写入磁盘
+    4) 将元信息写入磁盘上各自的位置
+    5) 将根目录写入磁盘
+*/
 static void partition_format(struct partition* part) {
     // 为实现方便，一个块大小便是一扇区
     uint32_t boot_sector_sects = 1;
@@ -65,6 +135,10 @@ static void partition_format(struct partition* part) {
     printk("   super_block_lba:0x%x\n", part->start_lba + 1);
 
     // 找出数据量最大的元信息, 用其尺寸做存储缓冲区
+    /*
+        超级块本身是1扇区大小，用局部变量声明它，栈还能应付
+        空闲块位图、inode数组位图等占用的扇区数较大，应该从堆中申请内存作为缓冲区
+    */
     uint32_t buf_size = (sb.block_bitmap_sects >= sb.inode_bitmap_sects ? sb.block_bitmap_sects : sb.inode_bitmap_sects);
     buf_size = (buf_size >= sb.inode_table_sects ? buf_size : sb.inode_table_sects) * SECTOR_SIZE;
     uint8_t* buf = (uint8_t*)sys_malloc(buf_size);	// 申请的内存由内存管理系统清0后返回
@@ -151,7 +225,7 @@ void filesys_init() {
             }
             struct disk* hd = &channels[channel_no].devices[dev_no];
             struct partition* part = hd->prim_parts;
-            while (part_idx < 12) {   // 4个主分区+8个逻辑
+            while (part_idx < 12) {   // 4个主分区 + 8个逻辑
                 if (part_idx == 4) {  // 开始处理逻辑分区
                     part = hd->logic_parts;
                 }
@@ -184,4 +258,8 @@ void filesys_init() {
         channel_no++;	// 下一通道
     }
     sys_free(sb_buf);
+
+    char default_part[8] = "sdb1";
+    // 挂载分区
+    list_traversal(&partition_list, mount_partition, (int)default_part);
 }
