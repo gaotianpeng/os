@@ -61,6 +61,7 @@ bool elem_find(struct list* plist, struct list_elem* obj_elem) {
    return false;
 }
 
+// 遍历plist所有元素，直到func(arg)返回true或者列表元素全部遍历结束
 struct list_elem* list_traversal(struct list* plist, function func, int arg) {
    struct list_elem* elem = plist->head.next;
    if (list_empty(plist)) { 

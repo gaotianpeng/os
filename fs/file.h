@@ -7,9 +7,9 @@
 #include "global.h"
 
 struct file {
-    uint32_t fd_pos;        // 记录当前文件操作的偏移地址 ,以0为起始
-    uint32_t fd_flag;
-    struct inode* fd_inode;
+    uint32_t fd_pos;        // 记录当前文件操作的偏移地址, 以0为起始
+    uint32_t fd_flag;       // 文件操作标识，如O_RDONLY
+    struct inode* fd_inode; // 用来指向inode队列(part->open_inodes)中的inode
 };
 
 // 标准输入输出描述符
@@ -24,7 +24,11 @@ enum bitmap_type {
     BLOCK_BITMAP
 };
 
-#define MAX_FILE_OPEN 32    // 系统可打开的最大文件数
+/*
+    最多可同时打开MAX_FILE_OPEN次文件
+    一个文件可以被多次打开，甚至把全局file_table占满
+*/
+#define MAX_FILE_OPEN 32
 
 extern struct file file_table[MAX_FILE_OPEN];
 int32_t inode_bitmap_alloc(struct partition* part);

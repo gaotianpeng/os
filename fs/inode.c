@@ -10,7 +10,7 @@
 #include "string.h"
 #include "super_block.h"
 
-// 用来存储inode位置
+// 用来存储inode位置, 包括inode所在的扇区地址及在扇区内的偏移量
 struct inode_position {
    bool	 two_sec;	    // inode是否跨扇区
    uint32_t sec_lba;	// inode所在的扇区号
@@ -30,9 +30,9 @@ static void inode_locate(struct partition* part, uint32_t inode_no, struct inode
 
    // 判断此i结点是否跨越2个扇区
    uint32_t left_in_sec = 512 - off_size_in_sec;
-   if (left_in_sec < inode_size ) {	  // 若扇区内剩下的空间不足以容纳一个inode, 必然是I结点跨越了2个扇区
+   if (left_in_sec < inode_size ) {	    // 若扇区内剩下的空间不足以容纳一个inode, 必然是I结点跨越了2个扇区
       inode_pos->two_sec = true;
-   } else {				  // 否则, 所查找的inode未跨扇区
+   } else {				                // 否则, 所查找的inode未跨扇区
       inode_pos->two_sec = false;
    }
    inode_pos->sec_lba = inode_table_lba + off_sec;
@@ -48,7 +48,8 @@ void inode_sync(struct partition* part, struct inode* inode, void* io_buf) {	 //
    
     /* 
         硬盘中的inode中的成员inode_tag和i_open_cnts是不需要的,
-        它们只在内存中记录链表位置和被多少进程共享 */
+        它们只在内存中记录链表位置和被多少进程共享 
+    */
     struct inode pure_inode;
     memcpy(&pure_inode, inode, sizeof(struct inode));
 
@@ -58,7 +59,7 @@ void inode_sync(struct partition* part, struct inode* inode, void* io_buf) {	 //
     pure_inode.inode_tag.prev = pure_inode.inode_tag.next = NULL;
 
     char* inode_buf = (char*)io_buf;
-    if (inode_pos.two_sec) {	    // 若是跨了两个扇区,就要读出两个扇区再写入两个扇区
+    if (inode_pos.two_sec) {	    // 若是跨了两个扇区, 就要读出两个扇区再写入两个扇区
         // 读写硬盘是以扇区为单位, 若写入的数据小于一扇区, 要将原硬盘上的内容先读出来再和新数据拼成一扇区后再写入
         ide_read(part->my_disk, inode_pos.sec_lba, inode_buf, 2);	// inode在format中写入硬盘时是连续写入的, 所以读入2块扇区
 
@@ -115,7 +116,7 @@ struct inode* inode_open(struct partition* part, uint32_t inode_no) {
             所以下面可以连续读出来 
         */
         ide_read(part->my_disk, inode_pos.sec_lba, inode_buf, 2);
-    } else {	// 否则, 所查找的inode未跨扇区,一个扇区大小的缓冲区足够
+    } else {	// 否则, 所查找的inode未跨扇区, 一个扇区大小的缓冲区足够
         inode_buf = (char*)sys_malloc(512);
         ide_read(part->my_disk, inode_pos.sec_lba, inode_buf, 1);
     }

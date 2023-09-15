@@ -18,6 +18,7 @@ struct partition* cur_part;         // 默认情况下操作的是哪个分区
 // 在分区链表中找到名为part_name的分区, 并将其指针赋值给cur_part
 static bool mount_partition(struct list_elem* pelem, int arg) {
     char* part_name = (char*)arg;
+    // 将pelem还原为分区part
     struct partition* part = elem2entry(struct partition, part_tag, pelem);
     if (!strcmp(part->name, part_name)) {
         cur_part = part;
@@ -32,7 +33,7 @@ static bool mount_partition(struct list_elem* pelem, int arg) {
             PANIC("alloc memory failed!");
         }
 
-        // 读入超级块
+        // 从硬盘读入超级块
         memset(sb_buf, 0, SECTOR_SIZE);
         ide_read(hd, cur_part->start_lba + 1, sb_buf, 1);   
 
@@ -379,7 +380,6 @@ int32_t sys_open(const char* pathname, uint8_t flags) {
     return fd;
 }
 
-
 // 在磁盘上搜索文件系统，若没有则格式化分区创建文件系统
 void filesys_init() {
     uint8_t channel_no = 0, dev_no, part_idx = 0;
@@ -434,10 +434,10 @@ void filesys_init() {
     }
     sys_free(sb_buf);
 
+    // 默认操作的分区
     char default_part[8] = "sdb1";
     // 挂载分区
     list_traversal(&partition_list, mount_partition, (int)default_part);
-
     
     // 将当前分区的根目录打开
     open_root_dir(cur_part);
