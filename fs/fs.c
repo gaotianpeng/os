@@ -367,10 +367,14 @@ int32_t sys_open(const char* pathname, uint8_t flags) {
 
     switch (flags & O_CREAT) {
         case O_CREAT:
-        printk("creating file\n");
-        fd = file_create(searched_record.parent_dir, (strrchr(pathname, '/') + 1), flags);
-        dir_close(searched_record.parent_dir);
-        // 其余为打开文件
+            printk("creating file\n");
+            fd = file_create(searched_record.parent_dir, (strrchr(pathname, '/') + 1), flags);
+            dir_close(searched_record.parent_dir);
+            // 其余为打开文件
+            break;
+        default:
+            // 其余情况为打开已存在的文件: O_RDONLY,O_WRONLY,O_RDWR
+            fd = file_open(inode_no, flags); 
     }
 
     /* 
@@ -378,6 +382,25 @@ int32_t sys_open(const char* pathname, uint8_t flags) {
         并不是指全局file_table中的下标 
     */
     return fd;
+}
+
+static uint32_t fd_local2global(uint32_t local_fd) {
+    struct task_struct* cur = running_thread();
+    int32_t global_fd = cur->fd_table[local_fd];
+    ASSERT(global_fd >= 0 && global_fd < MAX_FILE_OPEN);
+    return (uint32_t)global_fd;
+}
+
+// 关闭文件描述符fd指向的文件，成功返回0，否则返回-1
+int32_t sys_close(int32_t fd) {
+    int32_t ret = -1;
+    if (fd > 2) {
+        uint32_t _fd = fd_local2global(fd);
+        ret = file_close(&file_table[_fd]);
+        running_thread()->fd_table[fd] = -1;
+    }
+
+    return ret;
 }
 
 // 在磁盘上搜索文件系统，若没有则格式化分区创建文件系统
@@ -428,7 +451,7 @@ void filesys_init() {
                 part_idx++;
                 part++;	// 下一分区
             }
-            dev_no++;	// 下一磁盘
+           dev_no++;	// 下一磁盘
         }
         channel_no++;	// 下一通道
     }

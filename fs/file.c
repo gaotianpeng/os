@@ -96,8 +96,11 @@ void bitmap_sync(struct partition* part, uint32_t bit_idx, uint8_t btmp_type) {
     }
     ide_write(part->my_disk, sec_lba, bitmap_off, 1);
 }
-
-// 创建文件, 若成功则返回文件描述符, 否则返回-1
+ 
+/*
+    创建文文件
+    在父目录parent_dir中，以模式flag去创建普通文件filename, 若成功则返回文件描述符, 否则返回-1
+*/
 int32_t file_create(struct dir* parent_dir, char* filename, uint8_t flag) {
     // 后续操作的公共缓冲区
     void* io_buf = sys_malloc(1024);
@@ -109,7 +112,7 @@ int32_t file_create(struct dir* parent_dir, char* filename, uint8_t flag) {
     uint8_t rollback_step = 0;	       // 用于操作失败时回滚各资源状态
 
     // 为新文件分配inode
-    int32_t inode_no = inode_bitmap_alloc(cur_part); 
+    int32_t inode_no = inode_bitmap_alloc(cur_part);
     if (inode_no == -1) {
         printk("in file_creat: allocate inode failed\n");
         return -1;
@@ -187,4 +190,45 @@ rollback:
 
     sys_free(io_buf);
     return -1;
+}
+
+// 打开编号为inode_no对应的文件，若成功则返回文件描述符，失败则返回-1
+int32_t file_open(uint32_t inode_no, uint8_t flag) {
+    int fd_idx = get_free_slot_in_global();
+    if (fd_idx == -1) {
+        printk("exceed max open files\n");
+        return -1;
+    }
+
+    file_table[fd_idx].fd_inode = inode_open(cur_part, inode_no);
+    file_table[fd_idx].fd_pos = 0;
+    file_table[fd_idx].fd_flag = flag;
+
+    bool* write_deny = &file_table[fd_idx].fd_inode->write_deny;
+    if (flag & O_WRONLY || flag & O_RDWR) { // 写文件需要判断是否有其它进程正写此文件
+        enum intr_status old_status = intr_disable();
+        if (!(*write_deny)) {  // 若当前没有其它进程写该文件，将其占用
+            *write_deny = true;
+            intr_set_status(old_status);
+        } else {
+            intr_set_status(old_status);
+            printk("file can't be write now, try again later\n");
+            return -1;
+        }
+    }
+
+    return pcb_fd_install(fd_idx);
+}
+
+// 判断文件
+int32_t file_close(struct file* file) {
+    if (file == NULL) {
+        return -1;
+    }
+
+    file->fd_inode->write_deny = false;
+    inode_close(file->fd_inode);
+    file->fd_inode = NULL;
+
+    return 0;
 }
