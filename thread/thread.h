@@ -89,8 +89,6 @@ struct task_struct {
     // 此任务自从在CPU上运行后至今占用了多少CPU嘀嗒数，也就是执行了多久
     uint32_t elapsed_ticks;
 
-    int32_t fd_table[MAX_FILES_OPEN_PER_PROC];      // 文件描述符數組
-
     /*
         general_tag的作用是用于线程在一般的队列中的结点
         是线程的标签，当线程被加入到就绪队列thread_ready_list或其他等待队列中时，
@@ -105,7 +103,9 @@ struct task_struct {
 
     struct virtual_addr userprog_vaddr; // 用户进程的虚拟地址池
     struct mem_block_desc u_block_desc[DESC_CNT];   // 用户进程内存块描述符
-    uint32_t stack_magic;       // 用这串数字做栈的边界标记，用于检测栈的溢出
+    int32_t fd_table[MAX_FILES_OPEN_PER_PROC];  // 已打开文件数组
+    uint32_t cwd_inode_nr;  // 进程所在的工作目录的inode号
+    uint32_t stack_magic; // 用这串数字做栈的边界标记，用于检测栈的溢出
 };
 
 extern struct list thread_ready_list;
