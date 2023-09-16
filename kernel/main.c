@@ -26,7 +26,7 @@ void init(void) {
    if (ret_pid) {
       printf("I am father, my pid is %d, child pid is %d\n", getpid(), ret_pid);
    } else {
-      printf("I am child, my pid is $d, ret pid is %d\n", getpid(), ret_pid);
+      printf("I am child, my pid is %d, ret pid is %d\n", getpid(), ret_pid);
    }
 
    while(1);
