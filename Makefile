@@ -23,7 +23,8 @@ OBJS = $(BUILD_DIR)/main.o $(BUILD_DIR)/init.o $(BUILD_DIR)/interrupt.o \
 	   	$(BUILD_DIR)/process.o  $(BUILD_DIR)/syscall.o $(BUILD_DIR)/syscall_init.o \
 	   	$(BUILD_DIR)/stdio.o $(BUILD_DIR)/ide.o $(BUILD_DIR)/stdio_kernel.o $(BUILD_DIR)/fs.o \
 	   	$(BUILD_DIR)/inode.o $(BUILD_DIR)/file.o $(BUILD_DIR)/dir.o $(BUILD_DIR)/fork.o \
-		$(BUILD_DIR)/shell.o $(BUILD_DIR)/assert.o $(BUILD_DIR)/buildin_cmd.o
+		$(BUILD_DIR)/shell.o $(BUILD_DIR)/assert.o $(BUILD_DIR)/buildin_cmd.o \
+		$(BUILD_DIR)/exec.o
 
 #####################################
 $(BUILD_DIR)/mbr.bin: boot/mbr.asm
@@ -169,6 +170,11 @@ $(BUILD_DIR)/buildin_cmd.o: shell/buildin_cmd.c shell/buildin_cmd.h lib/stdint.h
 	lib/user/syscall.h lib/stdio.h lib/stdint.h lib/string.h fs/fs.h
 	$(CC) $(CFLAGS) $< -o $@
 
+$(BUILD_DIR)/exec.o: userprog/exec.c userprog/exec.h thread/thread.h lib/stdint.h \
+	lib/kernel/list.h kernel/global.h lib/kernel/bitmap.h kernel/memory.h \
+	lib/kernel/stdio_kernel.h fs/fs.h lib/string.h lib/stdint.h
+	$(CC) $(CFLAGS) $< -o $@
+
 #####################################
 $(BUILD_DIR)/kernel.o: kernel/kernel.asm
 	$(AS) $(ASFLAGS) $< -o $@
@@ -213,3 +219,7 @@ bochs: all
 
 # bximage -q -hd=50 -func=create -sectsize=512 -imgmode=flat hd50M.img
 # echo -e  "n\np\n1\n\n+4M\nn\ne\n2\n\n\nn\n\n+5M\nn\n\n+6M\nn\n\n+7M\nn\n\n+8M\nn\n\n+9M\nn\n\n\nw\n" | fdisk hd50M.img &> /dev/null
+
+# gcc -m32 -Wall -c -fno-builtin -W -Wstrict-prototypes -Wmissing-prototypes    -Wsystem-headers -I ../lib -o prog_no_arg.o prog_no_arg.c
+# ld -melf_i386  -e main prog_no_arg.o ../build/string.o ../build/syscall.o   ../build/stdio.o ../build/assert.o -o prog_no_arg
+# dd if=prog_no_arg of=/home/os/work/os/hd60M.img    bs=512 count=10 seek=300 conv=notrunc

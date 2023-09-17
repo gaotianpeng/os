@@ -6,7 +6,7 @@
 #include "bitmap.h"
 #include "memory.h"
 
-
+#define TASK_NAME_LEN 16
 #define MAX_FILES_OPEN_PER_PROC 8
 
 
