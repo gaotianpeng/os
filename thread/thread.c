@@ -248,7 +248,7 @@ void thread_yield(void) {
 static void pad_print(char* buf, int32_t buf_len, void* ptr, char format) {
    memset(buf, 0, buf_len);
    uint8_t out_pad_0idx = 0;
-   switch(format) {
+   switch (format) {
       case 's':
          out_pad_0idx = sprintf(buf, "%s", ptr);
       break;
@@ -257,7 +257,8 @@ static void pad_print(char* buf, int32_t buf_len, void* ptr, char format) {
       case 'x':
          out_pad_0idx = sprintf(buf, "%x", *((uint32_t*)ptr));
    }
-   while(out_pad_0idx < buf_len) { // 以空格填充
+
+   while (out_pad_0idx < buf_len) { // 以空格填充
       buf[out_pad_0idx] = ' ';
       out_pad_0idx++;
    }
@@ -303,7 +304,7 @@ static bool elem2thread_info(struct list_elem* pelem, int arg UNUSED) {
    memcpy(out_pad, pthread->name, strlen(pthread->name));
    strcat(out_pad, "\n");
    sys_write(stdout_no, out_pad, strlen(out_pad));
-   return false;	// 此处返回false是为了迎合主调函数list_traversal,只有回调函数返回false时才会继续调用此函数
+   return false;	// 此处返回false是为了迎合主调函数list_traversal, 只有回调函数返回false时才会继续调用此函数
 }
 
 
