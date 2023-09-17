@@ -211,7 +211,7 @@ static void partition_format(struct partition* part) {
 }
 
 // 将最上层路径名称解析出来
-static char* path_parse(char* pathname, char* name_store) {
+char* path_parse(char* pathname, char* name_store) {
     if (pathname[0] == '/') {   // 根目录不需要单独解析
         // 路径中出现1个或多个连续的字符'/',将这些'/'跳过,如"///a/b"
         while(*(++pathname) == '/');
@@ -394,15 +394,14 @@ static uint32_t fd_local2global(uint32_t local_fd) {
     return (uint32_t)global_fd;
 }
 
-// 关闭文件描述符fd指向的文件，成功返回0，否则返回-1
+// 关闭文件描述符fd指向的文件, 成功返回0, 否则返回-1
 int32_t sys_close(int32_t fd) {
-    int32_t ret = -1;
+    int32_t ret = -1; // 返回值默认为-1,即失败
     if (fd > 2) {
         uint32_t _fd = fd_local2global(fd);
         ret = file_close(&file_table[_fd]);
-        running_thread()->fd_table[fd] = -1;
+        running_thread()->fd_table[fd] = -1; // 使该文件描述符位可用
     }
-
     return ret;
 }
 

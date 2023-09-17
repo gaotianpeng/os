@@ -7,6 +7,7 @@
 #include "global.h"
 #include "assert.h"
 #include "string.h"
+#include "buildin_cmd.h"
 
 #define cmd_len 128                 // 最大支持键入128个字符的命令行输入
 #define MAX_ARG_NR 16               //  加上命令名外, 最多支持15个参数
@@ -119,12 +120,13 @@ int32_t argc = -1;
 // 简单的shell
 void my_shell(void) {
     cwd_cache[0] = '/';
+    cwd_cache[1] = 0;
     while (1) {
         print_prompt(); 
         memset(final_path, 0, MAX_PATH_LEN);
         memset(cmd_line, 0, MAX_PATH_LEN);
         readline(cmd_line, MAX_PATH_LEN);
-        if (cmd_line[0] == 0) {	// 若只键入了一个回车
+        if (cmd_line[0] == 0) {	 // 若只键入了一个回车
             continue;
         }
         argc = -1;
@@ -134,12 +136,13 @@ void my_shell(void) {
             continue;
         }
         
+        char buf[MAX_PATH_LEN] = {0};
         int32_t arg_idx = 0;
         while(arg_idx < argc) {
-            printf("%s ", argv[arg_idx]); 
+            make_clear_abs_path(argv[arg_idx], buf);
+            printf("%s -> %s\n", argv[arg_idx], buf); 
             arg_idx++;
         }
-        printf("\n");
     }
     panic("my_shell: should not be here");
 }
