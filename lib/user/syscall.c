@@ -73,7 +73,7 @@ pid_t fork(void) {
 
 // 从文件描述符fd中读取count个字节到buf
 int32_t read(int32_t fd, void* buf, uint32_t count) {
-   return _syscall3(SYS_PUTCHAR, fd, buf, count);
+   return _syscall3(SYS_READ, fd, buf, count);
 }
 
 // 输出一个字符
