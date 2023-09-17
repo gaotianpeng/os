@@ -236,7 +236,6 @@ static void intr_keyboard_handler(void) {
             }
 
             if (!ioq_full(&kbd_buf)) {
-                put_char(cur_char);	    // 临时的
                 ioq_putchar(&kbd_buf, cur_char);
             }
             return;
@@ -257,7 +256,7 @@ static void intr_keyboard_handler(void) {
             caps_lock_status = !caps_lock_status;
         }
     } else {
-        put_char("unknown key\n");
+        put_str("unknown key\n");
     }
 
     return;

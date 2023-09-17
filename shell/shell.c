@@ -60,6 +60,6 @@ void my_shell(void) {
         if (cmd_line[0] == 0) {
             continue;
         }
-        panic("my_shell: should not be here");
     }
+    panic("my_shell: should not be here");
 }
