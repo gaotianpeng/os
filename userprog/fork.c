@@ -3,7 +3,7 @@
 #include "memory.h"
 #include "interrupt.h"
 #include "debug.h"
-#include "thread.h"
+#include "thread.h"    
 #include "string.h"
 #include "file.h"
 
@@ -12,32 +12,31 @@ extern void intr_exit(void);
 // 将父进程的pcb、虚拟地址位图拷贝给子进程
 static int32_t copy_pcb_vaddrbitmap_stack0(struct task_struct* child_thread, struct task_struct* parent_thread) {
     // a 复制pcb所在的整个页, 里面饮食进程pcb信息及特权0级的栈, 里面包含了返回地址, 然后再单独修改个别部分
-    memcpy(child_thread, parent_thread, PG_SIZE);
-    child_thread->pid = fork_pid();
-    child_thread->elapsed_ticks = 0;
-    child_thread->status = TASK_READY;
-    child_thread->parent_pid = parent_thread->pid;
-    child_thread->general_tag.prev = child_thread->general_tag.next = NULL;
-    child_thread->all_list_tag.prev = child_thread->all_list_tag.next = NULL;
-    block_desc_init(child_thread->u_block_desc);
-    
-    // b 复制父进程的虚拟地址的位图
-    uint32_t bitmap_pg_cnt = DIV_ROUND_UP((0xc0000000 - USER_VADDR_START) / PG_SIZE / 8, PG_SIZE);
-    void* vaddr_bitmap = get_kernel_pages(bitmap_pg_cnt);
-    if (vaddr_bitmap == NULL) {
-        return -1;
-    }
-    /* 
-        此时child_thread->userprog_vaddr.vaddr_bitmap.bits还是指向父进程虚拟地址的位图地址
-        下面将child_thread->userprog_vaddr.vaddr_bitmap.bits指向自己的位图vaddr_btmp 
-    */
-    memcpy(vaddr_bitmap, child_thread->userprog_vaddr.vaddr_bitmap.bits, bitmap_pg_cnt * PG_SIZE);
-    child_thread->userprog_vaddr.vaddr_bitmap.bits = vaddr_bitmap;
-
-    // 调试用
-    ASSERT(strlen(child_thread->name) < 11);
-    strcat(child_thread->name, "_fork");
-    return 0;
+   memcpy(child_thread, parent_thread, PG_SIZE);
+   child_thread->pid = fork_pid();
+   child_thread->elapsed_ticks = 0;
+   child_thread->status = TASK_READY;
+   child_thread->ticks = child_thread->priority;   // 为新进程把时间片充满
+   child_thread->parent_pid = parent_thread->pid;
+   child_thread->general_tag.prev = child_thread->general_tag.next = NULL;
+   child_thread->all_list_tag.prev = child_thread->all_list_tag.next = NULL;
+   block_desc_init(child_thread->u_block_desc);
+   // b 复制父进程的虚拟地址的位图
+   uint32_t bitmap_pg_cnt = DIV_ROUND_UP((0xc0000000 - USER_VADDR_START) / PG_SIZE / 8 , PG_SIZE);
+   void* vaddr_btmp = get_kernel_pages(bitmap_pg_cnt);
+   if (vaddr_btmp == NULL) {
+      return -1;
+   }
+   /* 
+      此时child_thread->userprog_vaddr.vaddr_bitmap.bits还是指向父进程虚拟地址的位图地址
+      下面将child_thread->userprog_vaddr.vaddr_bitmap.bits指向自己的位图vaddr_btmp 
+   */
+   memcpy(vaddr_btmp, child_thread->userprog_vaddr.vaddr_bitmap.bits, bitmap_pg_cnt * PG_SIZE);
+   child_thread->userprog_vaddr.vaddr_bitmap.bits = vaddr_btmp;
+   // 调试用
+   //   ASSERT(strlen(child_thread->name) < 11);	// pcb.name的长度是16,为避免下面strcat越界
+   //   strcat(child_thread->name,"_fork");
+   return 0;
 }
 
 // 复制子进程的进程体(代码和数据)及用户栈
@@ -82,55 +81,56 @@ static void copy_body_stack3(struct task_struct* child_thread, struct task_struc
     }
 }
 
-// 为子进程构建thread_stack和修改返回值
+/* 为子进程构建thread_stack和修改返回值 */
 static int32_t build_child_stack(struct task_struct* child_thread) {
-    // a 使子进程pid返回值为0
-    // 获取子进程0级栈栈顶
-    struct intr_stack* intr_0_stack = (struct intr_stack*)((uint32_t)child_thread + PG_SIZE - sizeof(struct intr_stack));
-    // 修改子进程的返回值为0
-    intr_0_stack->eax = 0;
+/* a 使子进程pid返回值为0 */
+   /* 获取子进程0级栈栈顶 */
+   struct intr_stack* intr_0_stack = (struct intr_stack*)((uint32_t)child_thread + PG_SIZE - sizeof(struct intr_stack));
+   /* 修改子进程的返回值为0 */
+   intr_0_stack->eax = 0;
 
-    // b 为switch_to构建struct thread_stack, 将其构建在紧临intr_stack之下的空间
-    uint32_t* ret_addr_in_thread_stack = (uint32_t*)intr_0_stack - 1;
+/* b 为switch_to 构建 struct thread_stack,将其构建在紧临intr_stack之下的空间*/
+   uint32_t* ret_addr_in_thread_stack  = (uint32_t*)intr_0_stack - 1;
 
-    uint32_t* esi_ptr_in_thread_stack = (uint32_t*)intr_0_stack - 2; 
-    uint32_t* edi_ptr_in_thread_stack = (uint32_t*)intr_0_stack - 3; 
-    uint32_t* ebx_ptr_in_thread_stack = (uint32_t*)intr_0_stack - 4; 
+   /***   这三行不是必要的,只是为了梳理thread_stack中的关系 ***/
+   uint32_t* esi_ptr_in_thread_stack = (uint32_t*)intr_0_stack - 2; 
+   uint32_t* edi_ptr_in_thread_stack = (uint32_t*)intr_0_stack - 3; 
+   uint32_t* ebx_ptr_in_thread_stack = (uint32_t*)intr_0_stack - 4; 
+   /**********************************************************/
 
-    /* 
-        ebp在thread_stack中的地址便是当时的esp(0级栈的栈顶),
-        即esp为"(uint32_t*)intr_0_stack - 5" 
-    */
-    uint32_t* ebp_ptr_in_thread_stack = (uint32_t*)intr_0_stack - 5; 
+   /* ebp在thread_stack中的地址便是当时的esp(0级栈的栈顶),
+   即esp为"(uint32_t*)intr_0_stack - 5" */
+   uint32_t* ebp_ptr_in_thread_stack = (uint32_t*)intr_0_stack - 5; 
 
-    // switch_to的返回地址更新为intr_exit, 直接从中断返回
-    *ret_addr_in_thread_stack = (uint32_t)intr_exit;
+   /* switch_to的返回地址更新为intr_exit,直接从中断返回 */
+   *ret_addr_in_thread_stack = (uint32_t)intr_exit;
 
-    /* 
-        下面这两行赋值只是为了使构建的thread_stack更加清晰, 其实也不需要,
-        因为在进入intr_exit后一系列的pop会把寄存器中的数据覆盖 
-    */
-    *ebp_ptr_in_thread_stack = *ebx_ptr_in_thread_stack = 
-        *edi_ptr_in_thread_stack = *esi_ptr_in_thread_stack = 0;
-    /*********************************************************/
+   /* 下面这两行赋值只是为了使构建的thread_stack更加清晰,其实也不需要,
+    * 因为在进入intr_exit后一系列的pop会把寄存器中的数据覆盖 */
+   *ebp_ptr_in_thread_stack = *ebx_ptr_in_thread_stack =\
+   *edi_ptr_in_thread_stack = *esi_ptr_in_thread_stack = 0;
+   /*********************************************************/
 
-    // 把构建的thread_stack的栈顶做为switch_to恢复数据时的栈顶
-    child_thread->self_kstack = ebp_ptr_in_thread_stack;	    
-    return 0;
+   /* 把构建的thread_stack的栈顶做为switch_to恢复数据时的栈顶 */
+   child_thread->self_kstack = ebp_ptr_in_thread_stack;	    
+   return 0;
 }
-
 
 // 更新inode打开数
 static void update_inode_open_cnts(struct task_struct* thread) {
-    int32_t local_fd = 3, global_fd = 0;
-    while (local_fd < MAX_FILES_OPEN_PER_PROC) {
-        global_fd = thread->fd_table[local_fd];
-        ASSERT(global_fd < MAX_FILE_OPEN);
-        if (global_fd != -1) {
+   int32_t local_fd = 3, global_fd = 0;
+   while (local_fd < MAX_FILES_OPEN_PER_PROC) {
+      global_fd = thread->fd_table[local_fd];
+      ASSERT(global_fd < MAX_FILE_OPEN);
+      if (global_fd != -1) {
+         if (is_pipe(local_fd)) {
+            file_table[global_fd].fd_pos++;
+         } else {
             file_table[global_fd].fd_inode->i_open_cnts++;
-        }
-        local_fd++;
-    }
+         }
+      }
+      local_fd++;
+   }
 }
 
 // 拷贝父进程本身所占资源给子进程
@@ -186,3 +186,4 @@ pid_t sys_fork(void) {
 
     return child_thread->pid;    // 父进程返回子进程的pid
 }
+

@@ -1,7 +1,6 @@
 BUILD_DIR = ./build
 
-DISK_IMG = hd.img
-DISK_IMG2 = hd50M.img
+DISK_IMG = hd60M.img
 ENTRY_POINT = 0xc0001500
 
 AS = nasm
@@ -24,7 +23,7 @@ OBJS = $(BUILD_DIR)/main.o $(BUILD_DIR)/init.o $(BUILD_DIR)/interrupt.o \
 	   	$(BUILD_DIR)/stdio.o $(BUILD_DIR)/ide.o $(BUILD_DIR)/stdio_kernel.o $(BUILD_DIR)/fs.o \
 	   	$(BUILD_DIR)/inode.o $(BUILD_DIR)/file.o $(BUILD_DIR)/dir.o $(BUILD_DIR)/fork.o \
 		$(BUILD_DIR)/shell.o $(BUILD_DIR)/assert.o $(BUILD_DIR)/buildin_cmd.o \
-		$(BUILD_DIR)/exec.o
+		 $(BUILD_DIR)/exec.o $(BUILD_DIR)/wait_exit.o $(BUILD_DIR)/pipe.o
 
 #####################################
 $(BUILD_DIR)/mbr.bin: boot/mbr.asm
@@ -175,6 +174,20 @@ $(BUILD_DIR)/exec.o: userprog/exec.c userprog/exec.h thread/thread.h lib/stdint.
 	lib/kernel/stdio_kernel.h fs/fs.h lib/string.h lib/stdint.h
 	$(CC) $(CFLAGS) $< -o $@
 
+		
+$(BUILD_DIR)/wait_exit.o: userprog/wait_exit.c userprog/wait_exit.h \
+    	userprog/../thread/thread.h lib/stdint.h lib/kernel/list.h \
+     	kernel/global.h lib/kernel/bitmap.h kernel/memory.h kernel/debug.h \
+      	thread/thread.h lib/kernel/stdio_kernel.h
+	$(CC) $(CFLAGS) $< -o $@
+	
+$(BUILD_DIR)/pipe.o: shell/pipe.c shell/pipe.h lib/stdint.h kernel/memory.h \
+    	lib/kernel/bitmap.h kernel/global.h lib/kernel/list.h fs/fs.h fs/file.h \
+     	device/ide.h thread/sync.h thread/thread.h fs/dir.h fs/inode.h fs/fs.h \
+      	device/ioqueue.h thread/thread.h
+	$(CC) $(CFLAGS) $< -o $@
+
+
 #####################################
 $(BUILD_DIR)/kernel.o: kernel/kernel.asm
 	$(AS) $(ASFLAGS) $< -o $@
@@ -198,15 +211,13 @@ mk_dir:
 hd:
 	$(shell rm -rf $(DISK_IMG))
 	bximage -q -hd=16 -func=create -sectsize=512 -imgmode=flat $(DISK_IMG)
-	dd if=$(BUILD_DIR)/mbr.bin of=hd.img bs=512 count=1  conv=notrunc
-	dd if=$(BUILD_DIR)/loader.bin of=hd.img bs=512 count=4 seek=2 conv=notrunc
-	dd if=$(BUILD_DIR)/kernel.bin \
-           of=hd.img \
-           bs=512 count=200 seek=9 conv=notrunc
+	dd if=$(BUILD_DIR)/mbr.bin of=$(DISK_IMG) bs=512 count=1  conv=notrunc
+	dd if=$(BUILD_DIR)/loader.bin of=$(DISK_IMG) bs=512 count=4 seek=2 conv=notrunc
+	dd if=$(BUILD_DIR)/kernel.bin of=$(DISK_IMG) bs=512 count=200 seek=9 conv=notrunc
 
 clean:
 	$(shell rm -rf ${BUILD_DIR})
-	$(shell rm -rf ./hd.img)
+	$(shell rm -rf $(DISK_IMG))
 	$(shell rm -rf ./bx_enh_dbg.ini)
 
 

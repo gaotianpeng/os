@@ -71,7 +71,7 @@ void make_clear_abs_path(char* path, char* final_path) {
 }
 
 // pwd命令的内建函数
-void buildin_pwd(uint32_t argc, char** argv UNUSED) {
+void buildin_pwd(uint32_t argc, char** argv) {
     if (argc != 1) {
         printf("pwd: no argument support!\n");
         return;
@@ -199,9 +199,8 @@ void buildin_ls(uint32_t argc, char** argv) {
         }
     }
 }
-
 // ps命令内建函数
-void buildin_ps(uint32_t argc, char** argv UNUSED) {
+void buildin_ps(uint32_t argc, char** argv) {
     if (argc != 1) {
         printf("ps: no argument support!\n");
         return;
@@ -210,7 +209,7 @@ void buildin_ps(uint32_t argc, char** argv UNUSED) {
 }
 
 // clear命令内建函数
-void buildin_clear(uint32_t argc, char** argv UNUSED) {
+void buildin_clear(uint32_t argc, char** argv) {
     if (argc != 1) {
         printf("clear: no argument support!\n");
         return;
@@ -276,4 +275,8 @@ int32_t buildin_rm(uint32_t argc, char** argv) {
     }
 
     return ret;
+}
+
+void buildin_help(uint32_t argc /*UNUSED*/, char** argv /*UNUSED*/) {
+   help();
 }

@@ -194,7 +194,6 @@ bool sync_dir_entry(struct dir* parent_dir, struct dir_entry* p_de, void* io_buf
          memcpy(io_buf, p_de, dir_entry_size);
          ide_write(cur_part->my_disk, all_blocks[block_idx], io_buf, 1);
          dir_inode->i_size += dir_entry_size;
-         return true;
       }
 
       // 若第block_idx块已存在, 将其读进内存, 然后在该块中查找空目录项

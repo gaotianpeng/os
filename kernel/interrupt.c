@@ -11,7 +11,7 @@
 
 #define IDT_DESC_CNT 0x81	    // 目前总共支持的中断数
 
-#define EFLAGS_IF   0x00000200       // eflags寄存器中的if位为1
+#define EFLAGS_IF   0x00000200       // eflags寄存器中的IF位为1
 #define GET_EFLAGS(EFLAG_VAR) asm volatile("pushfl; popl %0" : "=g" (EFLAG_VAR))
 
 extern uint32_t syscall_handler(void);
@@ -179,7 +179,7 @@ enum intr_status intr_get_status() {
 
 // 在中断处理程序数组第vector_no个元素中注册安装中断处理程序function
 void register_handler(uint8_t vector_no, intr_handler function) {
-   idt_table[vector_no] = function;
+    idt_table[vector_no] = function;
 }
 
 // 完成有关中断的所有初始化工作

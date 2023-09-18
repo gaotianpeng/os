@@ -241,7 +241,7 @@ int32_t path_depth_cnt(char* pathname) {
         depth++;
         memset(name, 0, MAX_FILE_NAME_LEN);
         if (p) {	     // 如果p不等于NULL,继续分析路径
-            p  = path_parse(p, name);
+            p = path_parse(p, name);
         }
     }
     return depth;
@@ -319,28 +319,28 @@ static int search_file(const char* pathname, struct path_search_record* searched
     return dir_e.i_no;
 }
 
-// 打开或创建文件成功后, 返回文件描述符, 否则返回-1
+// 打开或创建文件成功后, 返回文件描述符, 否则返回 -1
 int32_t sys_open(const char* pathname, uint8_t flags) {
-    // 对目录要用dir_open, 这里只有open文件 
+    // 对目录要用 dir_open, 这里只有 open 文件
     if (pathname[strlen(pathname) - 1] == '/') {
-        printk("can`t open a directory %s\n",pathname);
+        printk("can`t open a directory %s\n", pathname);
         return -1;
     }
     ASSERT(flags <= 7);
-    int32_t fd = -1;	   // 默认为找不到
+    int32_t fd = -1; // 默认为找不到
 
     struct path_search_record searched_record;
     memset(&searched_record, 0, sizeof(struct path_search_record));
 
-    // 记录目录深度. 帮助判断中间某个目录不存在的情况
+    // 记录目录深度, 帮助判断中间某个目录不存在的情况
     uint32_t pathname_depth = path_depth_cnt((char*)pathname);
-
+    
     // 先检查文件是否存在
     int inode_no = search_file(pathname, &searched_record);
-    bool found = inode_no != -1 ? true : false; 
+    bool found = inode_no != -1 ? true : false;
 
     if (searched_record.file_type == FT_DIRECTORY) {
-        printk("can`t open a direcotry with open(), use opendir() to instead\n");
+        printk("can`t open a directory with open(), use opendir() to instead\n");
         dir_close(searched_record.parent_dir);
         return -1;
     }
@@ -348,9 +348,8 @@ int32_t sys_open(const char* pathname, uint8_t flags) {
     uint32_t path_searched_depth = path_depth_cnt(searched_record.searched_path);
 
     // 先判断是否把pathname的各层目录都访问到了, 即是否在某个中间目录就失败了
-    if (pathname_depth != path_searched_depth) {   // 说明并没有访问到全部的路径,某个中间目录是不存在的
-        printk("cannot access %s: Not a directory, subpath %s is`t exist\n", \
-        pathname, searched_record.searched_path);
+    if (pathname_depth != path_searched_depth) { // 说明并没有访问到全部的路径,某个中间目录是不存在的
+        printk("cannot access %s: Not a directory, subpath %s is`t exist\n", pathname, searched_record.searched_path);
         dir_close(searched_record.parent_dir);
         return -1;
     }
@@ -373,13 +372,11 @@ int32_t sys_open(const char* pathname, uint8_t flags) {
             printk("creating file\n");
             fd = file_create(searched_record.parent_dir, (strrchr(pathname, '/') + 1), flags);
             dir_close(searched_record.parent_dir);
-            // 其余为打开文件
             break;
+        // 其余为打开文件
         default:
-            // 其余情况为打开已存在的文件: O_RDONLY,O_WRONLY,O_RDWR
-            fd = file_open(inode_no, flags); 
+            fd = file_open(inode_no, flags);
     }
-
     /* 
         此fd是指任务pcb->fd_table数组中的元素下标,
         并不是指全局file_table中的下标 
@@ -387,19 +384,30 @@ int32_t sys_open(const char* pathname, uint8_t flags) {
     return fd;
 }
 
-static uint32_t fd_local2global(uint32_t local_fd) {
+// 将文件描述符转化为文件表的下标
+uint32_t fd_local2global(uint32_t local_fd) {
     struct task_struct* cur = running_thread();
     int32_t global_fd = cur->fd_table[local_fd];
     ASSERT(global_fd >= 0 && global_fd < MAX_FILE_OPEN);
     return (uint32_t)global_fd;
 }
 
-// 关闭文件描述符fd指向的文件, 成功返回0, 否则返回-1
+/* 关闭文件描述符fd指向的文件,成功返回0,否则返回-1 */
 int32_t sys_close(int32_t fd) {
-    int32_t ret = -1; // 返回值默认为-1,即失败
+    int32_t ret = -1;   // 返回值默认为-1,即失败
     if (fd > 2) {
-        uint32_t _fd = fd_local2global(fd);
-        ret = file_close(&file_table[_fd]);
+        uint32_t global_fd = fd_local2global(fd);
+        if (is_pipe(fd)) {
+            // 如果此管道上的描述符都被关闭, 释放管道的环形缓冲区
+            if (--file_table[global_fd].fd_pos == 0) {
+                mfree_page(PF_KERNEL, file_table[global_fd].fd_inode, 1);
+                file_table[global_fd].fd_inode = NULL;
+            }
+            ret = 0;
+        } else {
+            ret = file_close(&file_table[global_fd]);
+        }
+
         running_thread()->fd_table[fd] = -1; // 使该文件描述符位可用
     }
     return ret;
@@ -411,44 +419,57 @@ int32_t sys_write(int32_t fd, const void* buf, uint32_t count) {
         printk("sys_write: fd error\n");
         return -1;
     }
-
-    if (fd == stdout_no) {
-        char tmp_buf[1024] = {0};
-        memcpy(tmp_buf, buf, count);
-        console_put_str(tmp_buf);
-        return count;
-    }
-
-    uint32_t _fd = fd_local2global(fd);
-    struct file* wr_file = &file_table[_fd];
-    if (wr_file->fd_flag & O_WRONLY || wr_file->fd_flag & O_RDWR) {
-        uint32_t bytes_written = file_write(wr_file, buf, count);
-        return bytes_written;
+    if (fd == stdout_no) {  
+        // 标准输出有可能被重定向为管道缓冲区, 因此要判断
+        if (is_pipe(fd)) {
+            return pipe_write(fd, buf, count);
+        } else {
+            char tmp_buf[1024] = {0};
+            memcpy(tmp_buf, buf, count);
+            console_put_str(tmp_buf);
+            return count;
+        }
+    } else if (is_pipe(fd)) { // 若是管道就调用管道的方法
+        return pipe_write(fd, buf, count);
     } else {
-        console_put_str("sys_write: not allowed to write file without flag O_RDWR or O_WRONLY\n");
-        return -1;
+        uint32_t _fd = fd_local2global(fd);
+        struct file* wr_file = &file_table[_fd];
+        if (wr_file->fd_flag & O_WRONLY || wr_file->fd_flag & O_RDWR) {
+            uint32_t bytes_written  = file_write(wr_file, buf, count);
+            return bytes_written;
+        } else {
+            console_put_str("sys_write: not allowed to write file without flag O_RDWR or O_WRONLY\n");
+            return -1;
+        }
     }
 }
 
 // 从文件描述符fd指向的文件中读取count个字节到buf, 若成功则返回读出的字节数, 到文件尾则返回-1
 int32_t sys_read(int32_t fd, void* buf, uint32_t count) {
     ASSERT(buf != NULL);
-    
     int32_t ret = -1;
+    uint32_t global_fd = 0;
     if (fd < 0 || fd == stdout_no || fd == stderr_no) {
         printk("sys_read: fd error\n");
     } else if (fd == stdin_no) {
-        char* buffer = buf;
-        uint32_t bytes_read = 0;
-        while (bytes_read < count) {
-            *buffer = ioq_getchar(&kbd_buf);
-            bytes_read++;
-            buffer++;
+        // 标准输入有可能被重定向为管道缓冲区, 因此要判断
+        if (is_pipe(fd)) {
+            ret = pipe_read(fd, buf, count);
+        } else {
+            char* buffer = buf;
+            uint32_t bytes_read = 0;
+            while (bytes_read < count) {
+                *buffer = ioq_getchar(&kbd_buf);
+                bytes_read++;
+                buffer++;
+            }
+            ret = (bytes_read == 0 ? -1 : (int32_t)bytes_read);
         }
-        ret = (bytes_read == 0 ? -1 :(int32_t)bytes_read);
+    } else if (is_pipe(fd)) { // 若是管道就调用管道的方法
+        ret = pipe_read(fd, buf, count);
     } else {
-        uint32_t _fd = fd_local2global(fd);
-        ret = file_read(&file_table[_fd], buf, count);
+        global_fd = fd_local2global(fd);
+        ret = file_read(&file_table[global_fd], buf, count);   
     }
 
     return ret;
@@ -460,7 +481,6 @@ int32_t sys_lseek(int32_t fd, int32_t offset, uint8_t whence) {
         printk("sys_lseek: fd error\n");
         return -1;
     }
-
     ASSERT(whence > 0 && whence < 4);
     uint32_t _fd = fd_local2global(fd);
     struct file* pf = &file_table[_fd];
@@ -500,11 +520,10 @@ int32_t sys_unlink(const char* pathname) {
         return -1;
     }
     if (searched_record.file_type == FT_DIRECTORY) {
-        printk("can`t delete a direcotry with unlink(), use rmdir() to instead\n");
+        printk("can`t delete a directory with unlink(), use rmdir() to instead\n");
         dir_close(searched_record.parent_dir);
         return -1;
     }
-
     // 检查是否在已打开文件列表(文件表)中
     uint32_t file_idx = 0;
     while (file_idx < MAX_FILE_OPEN) {
@@ -528,16 +547,15 @@ int32_t sys_unlink(const char* pathname) {
         return -1;
     }
 
-    struct dir* parent_dir = searched_record.parent_dir;  
+    struct dir* parent_dir = searched_record.parent_dir;
     delete_dir_entry(cur_part, parent_dir, inode_no, io_buf);
     inode_release(cur_part, inode_no);
     sys_free(io_buf);
     dir_close(searched_record.parent_dir);
-
-    return 0;
+    return 0; // 成功删除文件
 }
 
-// 创建目录pathname, 成功返回0, 失败返回-1
+// 创建目录 pathname, 成功返回 0, 失败返回 -1
 int32_t sys_mkdir(const char* pathname) {
     uint8_t rollback_step = 0;	       // 用于操作失败时回滚各资源状态
     void* io_buf = sys_malloc(SECTOR_SIZE * 2);
@@ -569,7 +587,7 @@ int32_t sys_mkdir(const char* pathname) {
     // 目录名称后可能会有字符'/', 所以最好直接用searched_record.searched_path, 无'/'
     char* dirname = strrchr(searched_record.searched_path, '/') + 1;
 
-    inode_no = inode_bitmap_alloc(cur_part); 
+    inode_no = inode_bitmap_alloc(cur_part);
     if (inode_no == -1) {
         printk("sys_mkdir: allocate inode failed\n");
         rollback_step = 1;
@@ -641,27 +659,24 @@ int32_t sys_mkdir(const char* pathname) {
     return 0;
 
 // 创建文件或目录需要创建相关的多个资源, 若某步失败则会执行到下面的回滚步骤
-rollback:	     // 因为某步骤操作失败而回滚
+rollback:
     switch (rollback_step) {
         case 2:
-            bitmap_set(&cur_part->inode_bitmap, inode_no, 0);	 // 如果新文件的inode创建失败,之前位图中分配的inode_no也要恢复 
+            bitmap_set(&cur_part->inode_bitmap, inode_no, 0); // 如果新文件的inode创建失败,之前位图中分配的inode_no也要恢复 
         case 1:
             // 关闭所创建目录的父目录
             dir_close(searched_record.parent_dir);
-        break;
+            break;
     }
-
-   sys_free(io_buf);
-   return -1;
+    sys_free(io_buf);
+    return -1;
 }
-
 
 // 目录打开成功后返回目录指针，失败返回NULL
 struct dir* sys_opendir(const char* name) {
     ASSERT(strlen(name) < MAX_PATH_LEN);
-
-    // 如果是根目录'/', 直接返回&root_dir
-    if (name[0] == '/' && (name[1] == 0 || name[0] == './')) {
+    // 如果是根目录 '/', 直接返回 &root_dir
+    if (name[0] == '/' && (name[1] == 0 || name[0] == '.')) {
         return &root_dir;
     }
 
@@ -670,8 +685,8 @@ struct dir* sys_opendir(const char* name) {
     memset(&searched_record, 0, sizeof(struct path_search_record));
     int inode_no = search_file(name, &searched_record);
     struct dir* ret = NULL;
-    if (inode_no == -1) {	 // 如果找不到目录,提示不存在的路径 
-        printk("In %s, sub path %s not exist\n", name, searched_record.searched_path); 
+    if (inode_no == -1) { // 如果找不到目录,提示不存在的路径 
+        printk("In %s, sub path %s not exist\n", name, searched_record.searched_path);
     } else {
         if (searched_record.file_type == FT_REGULAR) {
             printk("%s is regular file!\n", name);
@@ -683,42 +698,41 @@ struct dir* sys_opendir(const char* name) {
     return ret;
 }
 
-// 成功关闭目录dir返回0, 失败则返回-1
+// 成功关闭目录 dir 返回 0, 失败返回 -1
 int32_t sys_closedir(struct dir* dir) {
     int32_t ret = -1;
     if (dir != NULL) {
         dir_close(dir);
         ret = 0;
     }
-
     return ret;
 }
 
-// 读取目录dir的1个目录项, 成功后返回其目录项地址, 到目录尾或出错时返回NULL
+// 读取目录 dir 的 1 个目录项, 成功后返回其目录项地址, 到目录尾时或出错时返回 NULL
 struct dir_entry* sys_readdir(struct dir* dir) {
     ASSERT(dir != NULL);
     return dir_read(dir);
 }
 
-// 把目录dir的指针dir_pos置0
+// 把目录 dir 的指针 dir_pos 置 0
 void sys_rewinddir(struct dir* dir) {
     dir->dir_pos = 0;
 }
 
-// 删除空目录, 成功时返回0, 失败时返回-1
+// 删除空目录, 成功时返回 0, 失败时返回 -1
 int32_t sys_rmdir(const char* pathname) {
     // 先检查待删除的文件是否存在
     struct path_search_record searched_record;
     memset(&searched_record, 0, sizeof(struct path_search_record));
     int inode_no = search_file(pathname, &searched_record);
     ASSERT(inode_no != 0);
-    int retval = -1;
+    int retval = -1; // 默认返回值
     if (inode_no == -1) {
-        printk("In %s, sub path %s not exist\n", pathname, searched_record.searched_path); 
+        printk("In %s, sub path %s not exist\n", pathname, searched_record.searched_path);
     } else {
         if (searched_record.file_type == FT_REGULAR) {
             printk("%s is regular file!\n", pathname);
-        } else { 
+        } else {
             struct dir* dir = dir_open(cur_part, inode_no);
             if (!dir_is_empty(dir)) { // 非空目录不可删除
                 printk("dir %s is not empty, it is not allowed to delete a nonempty directory!\n", pathname);
@@ -855,7 +869,7 @@ char* sys_getcwd(char* buf, uint32_t size) {
 // 更改当前工作目录为绝对路径path, 成功则返回0, 失败返回-1
 int32_t sys_chdir(const char* path) {
     int32_t ret = -1;
-    struct path_search_record searched_record;  
+    struct path_search_record searched_record;
     memset(&searched_record, 0, sizeof(struct path_search_record));
     int inode_no = search_file(path, &searched_record);
     if (inode_no != -1) {
@@ -866,7 +880,7 @@ int32_t sys_chdir(const char* path) {
             printk("sys_chdir: %s is regular file or other!\n", path);
         }
     }
-    dir_close(searched_record.parent_dir); 
+    dir_close(searched_record.parent_dir);
     return ret;
 }
 
@@ -898,10 +912,6 @@ int32_t sys_stat(const char* path, struct stat* buf) {
     return ret;
 }
 
-// 向屏幕输出一个字符
-void sys_putchar(char char_ascii) {
-    console_put_char(char_ascii);
-}
 
 // 在磁盘上搜索文件系统，若没有则格式化分区创建文件系统
 void filesys_init() {
@@ -971,3 +981,21 @@ void filesys_init() {
         file_table[fd_idx++].fd_inode = NULL;
     }
 }
+
+// 显示系统支持的内部命令
+void sys_help(void) {
+   printk("\
+ buildin commands:\n\
+       ls: show directory or file information\n\
+       cd: change current work directory\n\
+       mkdir: create a directory\n\
+       rmdir: remove a empty directory\n\
+       rm: remove a regular file\n\
+       pwd: show current work directory\n\
+       ps: show process information\n\
+       clear: clear screen\n\
+ shortcut key:\n\
+       ctrl+l: clear screen\n\
+       ctrl+u: clear input\n\n");
+}
+

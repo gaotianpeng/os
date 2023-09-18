@@ -1,6 +1,5 @@
-#ifndef __LIB_KERNEL_MEMORY_H
-#define __LIB_KERNEL_MEMORY_H
-
+#ifndef __KERNEL_MEMORY_H
+#define __KERNEL_MEMORY_H
 #include "stdint.h"
 #include "bitmap.h"
 #include "list.h"
@@ -39,12 +38,11 @@ struct mem_block_desc {
 // 16、32、64、128、256、512、1024
 #define DESC_CNT 7	   // 内存块描述符个数
 
-
+extern int page_table_add_num;
 extern struct pool kernel_pool, user_pool;
-
 void mem_init(void);
 void* get_kernel_pages(uint32_t pg_cnt);
-void* malloc_pgae(enum pool_flags pf, uint32_t pg_cnt);
+void* malloc_page(enum pool_flags pf, uint32_t pg_cnt);
 void malloc_init(void);
 uint32_t* pte_ptr(uint32_t vaddr);
 uint32_t* pde_ptr(uint32_t vaddr);
@@ -57,6 +55,7 @@ void mfree_page(enum pool_flags pf, void* _vaddr, uint32_t pg_cnt);
 void pfree(uint32_t pg_phy_addr);
 void sys_free(void* ptr);
 void* get_a_page_without_opvaddrbitmap(enum pool_flags pf, uint32_t vaddr);
-
+void free_a_phy_page(uint32_t pg_phy_addr);
 
 #endif // __LIB_KERNEL_MEMORY_H
+

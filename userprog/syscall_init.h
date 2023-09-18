@@ -1,9 +1,7 @@
-#ifndef __USERPROG_SYSCALL_INIT_H
-#define __USERPROG_SYSCALL_INIT_H
-
+#ifndef __USERPROG_SYSCALLINIT_H
+#define __USERPROG_SYSCALLINIT_H
 #include "stdint.h"
-
 void syscall_init(void);
 uint32_t sys_getpid(void);
 
-#endif // __USERPROG_SYSCALL_INIT_H
+#endif
