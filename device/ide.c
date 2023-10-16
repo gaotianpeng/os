@@ -12,7 +12,6 @@
 #include "list.h"
 
 // 定义硬盘各寄存器的端口号
-// 定义硬盘各寄存器的端口号
 #define reg_data(channel)	      (channel->port_base + 0)
 #define reg_error(channel)	      (channel->port_base + 1)
 #define reg_sect_cnt(channel)	   (channel->port_base + 2)
@@ -345,8 +344,6 @@ static bool partition_info(struct list_elem* pelem, int arg /*UNUSED*/) {
     */   
     return false;
 }
-
-
 
 // 硬盘数据结构初始化
 void ide_init() {
