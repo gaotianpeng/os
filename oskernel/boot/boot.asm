@@ -1,4 +1,3 @@
-; 0柱面0磁道1扇區
 [ORG  0x7c00]
 
 [SECTION .data]
@@ -13,7 +12,7 @@ _start:
     int 0x10
 
     ; 将setup读入内存
-    mov edi, BOOT_MAIN_ADDR    ; 读到哪里
+    mov edi, BOOT_MAIN_ADDR     ; 读到哪里
     mov ecx, 1                  ; 从哪个扇区开始读
     mov bl, 2                   ; 读多少扇区
     call read_hd
